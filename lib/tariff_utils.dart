@@ -80,6 +80,9 @@ const Set<String> _ignoredWords = {
 /// kata perintah, angka, dan kata pendek).
 List<String> destinationTokens(String query) => query
     .toUpperCase()
+    // Alias ejaan yang umum diketik terpisah, sedangkan database menyimpan
+    // nama kecamatan sebagai satu kata.
+    .replaceAll(RegExp(r'\\bJATI\\s+ASIH\\b'), 'JATIASIH')
     .replaceAll(RegExp(r'[^A-Z0-9 ]'), ' ')
     .split(RegExp(r'\s+'))
     .where((t) =>
