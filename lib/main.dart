@@ -201,7 +201,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
       if (weight == null) {
         output.add('${service.$1}: minimum $minimum kg, tarif ${money(rate)}/kg.');
       } else {
-        final billableWeight = weight > minimum ? weight : minimum;
+        final billableWeight = NextCargoTariffService.billableWeight(weight, minimum);
         final total = billableWeight * rate;
         output.add('${service.$1}: berat aktual $weight kg, berat tagihan $billableWeight kg × ${money(rate)}/kg = ${money(total)}.');
       }
@@ -373,6 +373,8 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
         (query.toLowerCase().contains('tarif') ||
          query.toLowerCase().contains('harga') ||
          query.toLowerCase().contains('ongkos') ||
+         query.toLowerCase().contains('ongkir') ||
+         query.toLowerCase().contains('biaya') ||
          query.toLowerCase().contains('berapa'))) {
       return fareQuestion;
     }
