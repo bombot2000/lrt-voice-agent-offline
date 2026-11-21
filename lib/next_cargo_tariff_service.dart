@@ -113,28 +113,44 @@ class NextCargoTariffService {
     return {for(var i=0;i<cols.length;i++) cols[i]:found[expected[i]]!};
   }
   static String cell(List<dynamic> row,int i)=>i<row.length?row[i].toString().trim():'';
+  static String _destinationKey(List<dynamic> row, Map<String,int> map) =>
+      ['province','city','district','village']
+          .map((field)=>norm(cell(row,map[field]!))).join('|');
+
+  // Nama tujuan yang hanya berbeda spasi/tanda baca dianggap alias.
+  // Alias hanya boleh dilewati jika tarif dan layanan selain nama wilayah identik.
+  static bool _sameTariffRecord(
+      List<dynamic> a, List<dynamic> b, Map<String,int> map) {
+    const addressFields={'province','city','district','village'};
+    for (final field in cols) {
+      if (addressFields.contains(field)) continue;
+      if (cell(a,map[field]!) != cell(b,map[field]!)) return false;
+    }
+    return true;
+  }
+
   static NextCargoImportPreview _previewRows(List<List<dynamic>> rows) {
     final at=headerAt(rows), map=mapHeader(rows[at]);
-    final keys=<String>{}, samples=<String>[];
-    var count=0;
+    final unique=<String,List<dynamic>>{}, samples=<String>[];
     for(var i=at+1;i<rows.length;i++) {
       final r=rows[i]; if(r.every((v)=>v.toString().trim().isEmpty)) continue;
       final origin=cell(r,map['origin']!);
       if(norm(origin)!='malangkota') throw FormatException('Baris '+(i+1).toString()+': asal harus MALANG KOTA.');
       final p=cell(r,map['province']!), c=cell(r,map['city']!), d=cell(r,map['district']!), v=cell(r,map['village']!);
       if([p,c,d,v].any((x)=>x.isEmpty)) throw FormatException('Baris '+(i+1).toString()+': data tujuan tidak lengkap.');
-      // Untuk deteksi duplikat, abaikan kapitalisasi dan spasi berulang
-      // saja. Jangan menghapus seluruh spasi/tanda baca: "SRI MENANTI"
-      // dan "SRIMENANTI" adalah label sumber yang berbeda dan keduanya
-      // harus tetap dapat diimpor.
-      String duplicatePart(String value) =>
-          value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-      final key=[p,c,d,v].map(duplicatePart).join('|');
-      if(!keys.add(key)) throw FormatException('Tujuan ganda: '+[p,c,d,v].join(' / '));
-      count++; if(samples.length<8) samples.add([v,d,c,p].join(', '));
+      final key=_destinationKey(r,map);
+      final previous=unique[key];
+      if(previous!=null) {
+        if(!_sameTariffRecord(previous,r,map)) {
+          throw FormatException('Tujuan ganda dengan tarif/layanan berbeda pada baris '+(i+1).toString()+': '+[p,c,d,v].join(' / ')+'. Periksa sumber tarif sebelum impor.');
+        }
+        continue;
+      }
+      unique[key]=r;
+      if(samples.length<8) samples.add([v,d,c,p].join(', '));
     }
-    if(count==0) throw const FormatException('File tidak memiliki baris tarif.');
-    return NextCargoImportPreview(count,samples);
+    if(unique.isEmpty) throw const FormatException('File tidak memiliki baris tarif.');
+    return NextCargoImportPreview(unique.length,samples);
   }
   static Future<NextCargoImportPreview> preview(String name, Uint8List bytes) async =>
       _previewRows(decode(name,bytes));
@@ -152,8 +168,10 @@ class NextCargoTariffService {
       await txn.update('tariff_backup_meta', {'available': 1}, where: 'id = 1');
       if(replace) await txn.delete('tariffs');
       var batch=txn.batch(), pending=0;
+      final importedKeys=<String>{};
       for(var i=at+1;i<rows.length;i++) {
         final r=rows[i]; if(r.every((v)=>v.toString().trim().isEmpty)) continue;
+        if(!importedKeys.add(_destinationKey(r,map))) continue;
         batch.insert('tariffs',{for(final c in cols)c:cell(r,map[c]!)},conflictAlgorithm:ConflictAlgorithm.replace);
         count++; pending++;
         if(pending>=400) { await batch.commit(noResult:true); batch=txn.batch(); pending=0; }
