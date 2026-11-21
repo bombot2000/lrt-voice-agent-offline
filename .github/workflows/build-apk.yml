@@ -16,19 +16,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract uploaded Build 54 and replace repository sources
+      - name: Extract uploaded Build 54 when archive is present
         run: |
           set -euo pipefail
           ARCHIVE="cargo-voice-agent-offline-build-54-preserve-package.zip"
-          test -s "$ARCHIVE"
-          unzip -q "$ARCHIVE" -d /tmp/cargo-build54
-          PROJECT_DIR="$(find /tmp/cargo-build54 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-          test -n "$PROJECT_DIR"
-          test -f "$PROJECT_DIR/pubspec.yaml"
-          test -f "$PROJECT_DIR/android/app/build.gradle"
-          test -f "$PROJECT_DIR/lib/main.dart"
-          rsync -a --delete --exclude='.git/' "$PROJECT_DIR/" ./
-          rm -f "$ARCHIVE"
+          if [ -f "$ARCHIVE" ]; then
+            unzip -q "$ARCHIVE" -d /tmp/cargo-build54
+            PROJECT_DIR="$(find /tmp/cargo-build54 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            test -n "$PROJECT_DIR"
+            test -f "$PROJECT_DIR/pubspec.yaml"
+            test -f "$PROJECT_DIR/android/app/build.gradle"
+            test -f "$PROJECT_DIR/lib/main.dart"
+            rsync -a --delete --exclude='.git/' --exclude='.github/workflows/build-apk.yml' "$PROJECT_DIR/" ./
+            rm -f "$ARCHIVE"
+          else
+            echo "Archive absent; build current repository sources."
+          fi
 
       - name: Commit extracted Build 54 sources to main
         run: |
@@ -74,5 +77,5 @@ jobs:
         run: |
           TAG="cargo-build-54-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
-            --title "NEXT Cargo Voice Agent Build 54" \
-            --notes "Build 54. Analyze dan test dijalankan pada commit ${GITHUB_SHA}. Tanda tangan debug; cocokkan sertifikat sebelum memasang sebagai pembaruan. Jangan uninstall aplikasi lama.";
+            --title "NEXT Cargo Voice Agent APK" \
+            --notes "Build 54. Analyze dan test dijalankan pada commit ${GITHUB_SHA}. Tanda tangan debug; cocokkan sertifikat sebelum memasang sebagai pembaruan. Jangan uninstall aplikasi lama."
