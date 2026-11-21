@@ -120,13 +120,13 @@ class _FareManagerPageState extends State<FareManagerPage> {
       if(f==null||f.files.single.bytes==null)return;
       setState(()=>busy=true);
       final parsed=await FareDataService.parse(f.files.single.name,f.files.single.bytes!);
-      if(mounted)setState(()=>{preview=parsed,filename=f.files.single.name});
+      if(mounted)setState(() { preview=parsed; filename=f.files.single.name; });
     } catch(e){_msg('File tidak valid: '+e.toString(),true);}
     finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> _apply() async {
     setState(()=>busy=true);
-    try{await FareDataService.apply(preview,replace);await _reload();if(mounted)setState(()=>{preview=[],filename=null});_msg('Tarif diperbarui. Backup lama tersimpan.');}
+    try{await FareDataService.apply(preview,replace);await _reload();if(mounted)setState(() { preview=[]; filename=null; });_msg('Tarif diperbarui. Backup lama tersimpan.');}
     catch(e){_msg('Gagal menerapkan tarif: '+e.toString(),true);}
     finally{if(mounted)setState(()=>busy=false);}
   }
@@ -162,7 +162,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
         SizedBox(height:250,child:ListView.builder(itemCount:preview.length,itemBuilder:(c,i){
           final r=preview[i];return ListTile(dense:true,title:Text(r.origin+' → '+r.destination),subtitle:Text(r.service),trailing:Text('Rp '+r.price.toString()));})),
         FilledButton.icon(onPressed:busy||preview.isEmpty?null:_apply,icon:const Icon(Icons.check),label:const Text('Terapkan tarif')),
-        TextButton(onPressed:busy?null:()=>setState(()=>{preview=[],filename=null}),child:const Text('Batalkan pratinjau')),
+        TextButton(onPressed:busy?null:()=>setState(() { preview=[]; filename=null; }),child:const Text('Batalkan pratinjau')),
       ],
       if(busy)const Center(child:Padding(padding:EdgeInsets.all(18),child:CircularProgressIndicator())),
       const SizedBox(height:12),const Text('Format file',style:TextStyle(fontWeight:FontWeight.bold)),
