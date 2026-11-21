@@ -36,6 +36,22 @@ const sibang = <String, Object?>{
   'tarif_reg': '5200',
 };
 
+const bekasiJatiAsih = <String, Object?>{
+  'province': 'JAWA BARAT',
+  'city': 'BEKASI',
+  'district': 'JATIASIH',
+  'village': 'JATIASIH',
+  'min_reg': '25',
+  'tarif_reg': '4700',
+  'min_sp1': '200',
+  'tarif_sp1': '4500',
+  'min_sp3': '1000',
+  'tarif_sp3': '4000',
+  'tarif_khusus': '3400',
+  'lead_time': '3',
+  'handler': 'BEKASI AGEN',
+};
+
 const abiansemal = <String, Object?>{
   'province': 'BALI',
   'city': 'BADUNG',
@@ -81,7 +97,7 @@ void main() {
     });
 
     test('berat tanpa layanan memakai Reguler dan tidak mencampur kolom lain', () async {
-      final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
+      final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg');
       expect(a, contains('Reguler: berat aktual 30 kg, berat tagihan 30 kg'));
       expect(a, contains('Rp 141.000')); // 30 kg x Rp 4.700
@@ -93,7 +109,7 @@ void main() {
     });
 
     test('berat di bawah minimum memakai berat minimum layanan', () async {
-      final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
+      final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 10 kg');
       expect(a, contains('berat aktual 10 kg, berat tagihan 25 kg'));
       expect(a, contains('Rp 117.500')); // minimum 25 kg x Rp 4.700
