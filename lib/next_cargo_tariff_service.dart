@@ -10,6 +10,33 @@ const cols = ['origin','province','city','district','village','handler','stt_doo
 String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 String sqlCols() => cols.map((c) => '$c TEXT').join(', ');
 
+String excelCellText(CellValue? value) {
+  switch (value) {
+    case null:
+      return '';
+    case TextCellValue(:final value):
+      return excelTextSpan(value);
+    case IntCellValue(:final value):
+      return value.toString();
+    case DoubleCellValue(:final value):
+      return value.toString();
+    case BoolCellValue(:final value):
+      return value ? 'TRUE' : 'FALSE';
+    case FormulaCellValue(:final formula):
+      return formula;
+    default:
+      return value.toString();
+  }
+}
+
+String excelTextSpan(TextSpan span) {
+  final ownText = span.text ?? '';
+  final childText = (span.children ?? const <TextSpan>[])
+      .map(excelTextSpan)
+      .join();
+  return '$ownText$childText';
+}
+
 class NextCargoImportPreview {
   final int rowCount;
   final List<String> sampleDestinations;
@@ -42,7 +69,22 @@ class NextCargoTariffService {
     if(lower.endsWith('.xlsx')) {
       final book=Excel.decodeBytes(bytes);
       if(book.tables.isEmpty) throw const FormatException('Sheet Excel tidak ditemukan.');
-      return book.tables.values.first.rows.map((r)=>r.map((c)=>c?.value??'').toList()).toList();
+      // Workbook bisa memiliki sheet cover/keterangan sebelum sheet tarif.
+      // Pilih sheet yang benar-benar memiliki header NEXT Cargo.
+      for (final sheet in book.tables.values) {
+        final candidate = sheet.rows
+            .map((row) => row.map((cell) => excelCellText(cell?.value)).toList())
+            .toList();
+        try {
+          headerAt(candidate);
+          return candidate;
+        } on FormatException {
+          // Lanjutkan memeriksa sheet berikutnya.
+        }
+      }
+      throw const FormatException(
+        'Header Asal Kota tidak ditemukan pada semua sheet Excel.',
+      );
     }
     if(lower.endsWith('.json')) {
       final decoded=jsonDecode(utf8.decode(bytes,allowMalformed:true));
@@ -131,7 +173,7 @@ class NextCargoTariffService {
   }
   static Future<List<Map<String,Object?>>> findDestination(String query) async {
     final db=await open();
-    const ignored={'tarif','ongkir','ongkos','harga','biaya','ke','dari','tujuan','menuju','pengiriman','kirim','paket','barang','berapa','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo','tolong','mohon','coba','cek','carikan','cari','info','informasi','hitung','hitungkan','kalkulasi','estimasi','berapa','untuk','dengan','berat','kg','kilo','kilogram','saya','minta','dong'};
+    const ignored={'tarif','ongkir','ongkos','harga','biaya','ke','dari','tujuan','menuju','pengiriman','kirim','paket','barang','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo','tolong','mohon','coba','cek','carikan','cari','info','informasi','hitung','hitungkan','kalkulasi','estimasi','berapa','untuk','dengan','berat','kg','kilo','kilogram','saya','minta','dong'};
     final tokens=query.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'),' ').split(RegExp(r'\s+')).where((t)=>t.length>=3&&!RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(t)&&!ignored.contains(t.toLowerCase())).toSet().toList();
     if(tokens.isEmpty)return [];
     const fields=['province','city','district','village'];
