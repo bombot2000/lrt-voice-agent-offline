@@ -72,6 +72,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
         'harga',
         'tiket',
         'ongkos',
+        'ongkir',
         'biaya',
         'mahal',
         'murah',
