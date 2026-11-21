@@ -66,7 +66,7 @@ num billableWeight(num actualWeight, num serviceMinimum) =>
 const int kMaxTariffMatches = 8;
 
 const Set<String> _ignoredWords = {
-  'tarif', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'tujuan',
+  'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'tujuan',
   'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang', 'kota',
   'kabupaten', 'provinsi', 'propinsi', 'kecamatan', 'kelurahan', 'desa',
   'reg', 'reguler', 'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon',
