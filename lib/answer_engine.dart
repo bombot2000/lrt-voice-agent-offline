@@ -151,7 +151,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       weightMatch == null ? null : parseTariffNumber(weightMatch.group(1));
 
   final lower = query.toLowerCase();
-  final wantsSpecial = RegExp(r'\\btarif\\s+khusus\\b|\\bkhusus\\b').hasMatch(lower);
+  final wantsSpecial = RegExp(r'\btarif\s+khusus\b|\bkhusus\b').hasMatch(lower);
   final requested = lower.contains('sp3')
       ? 'SP3'
       : lower.contains('sp2')
