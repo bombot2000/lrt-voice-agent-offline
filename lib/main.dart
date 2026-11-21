@@ -78,7 +78,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
         'berapa harga',
       ],
       answer:
-          'Tarif LRT mulai dari 5.000 rupiah untuk kilometer pertama, dengan batas maksimal 20.000 rupiah pada jam sibuk.',
+          'Data tarif rute belum diimpor. Buka menu Kelola Data Ongkir untuk memasukkan file tarif terbaru.',
     ),
     _LrtKnowledgeItem(
       keywords: [
