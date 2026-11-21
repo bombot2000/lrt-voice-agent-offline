@@ -20,7 +20,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       if(data==null)throw Exception('File tidak dapat dibaca.');
       setState(()=>busy=true); final p=await NextCargoTariffService.preview(file.name,data);
       if(mounted)setState(() { filename=file.name; bytes=data; preview=p; });
-    }catch(e){msg('CSV tidak valid: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
+    }catch(e){msg('File tarif tidak valid: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> apply() async {
     final data=bytes;if(data==null||preview==null)return;
