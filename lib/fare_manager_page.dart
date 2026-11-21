@@ -1,71 +1,227 @@
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
 import 'next_cargo_tariff_service.dart';
 
 class FareManagerPage extends StatefulWidget {
   const FareManagerPage({super.key});
-  @override State<FareManagerPage> createState()=>_FareManagerPageState();
+
+  @override
+  State<FareManagerPage> createState() => _FareManagerPageState();
 }
+
 class _FareManagerPageState extends State<FareManagerPage> {
-  int count=0; String? filename; Uint8List? bytes; NextCargoImportPreview? preview;
-  bool replace=true,busy=false;
-  @override void initState(){super.initState();reload();}
-  Future<void> reload() async {try{final n=await NextCargoTariffService.count();if(mounted)setState(()=>count=n);}catch(e){msg('Gagal membaca database: '+e.toString(),true);}}
-  void msg(String s,[bool error=false]){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s),backgroundColor:error?Colors.red:Colors.green));}
+  int count = 0;
+  String? filename;
+  ParsedTariff? parsed;
+  bool replace = true;
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    reload();
+  }
+
+  Future<void> reload() async {
+    try {
+      final n = await NextCargoTariffService.count();
+      if (mounted) setState(() => count = n);
+    } catch (e) {
+      msg('Gagal membaca database: $e', true);
+    }
+  }
+
+  void msg(String s, [bool error = false]) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s), backgroundColor: error ? Colors.red : Colors.green),
+    );
+  }
+
+  void clearSelection() {
+    filename = null;
+    parsed = null;
+  }
+
   Future<void> pick() async {
-    try{
-      final f=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['csv','json','xlsx'],withData:true);
-      if(f==null)return;
-      final file=f.files.single;
-      // Hapus pratinjau lama segera setelah file baru dipilih agar tombol
-      // Terapkan tidak mungkin memakai bytes dari file sebelumnya.
-      if(mounted)setState(() { busy=true; filename=null; bytes=null; preview=null; });
-      final data=file.bytes;
-      if(data==null)throw Exception('File tidak dapat dibaca.');
-      final result=await NextCargoTariffService.preview(file.name,data);
-      if(mounted)setState(() { filename=file.name; bytes=data; preview=result; });
-    }catch(e){
-      if(mounted)setState(() { filename=null; bytes=null; preview=null; });
-      msg('File tarif tidak valid: '+e.toString(),true);
-    }finally{if(mounted)setState(()=>busy=false);}
+    try {
+      final f = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv', 'json', 'xlsx'],
+        withData: true,
+      );
+      if (f == null) return;
+      final file = f.files.single;
+      // Hapus pratinjau lama segera agar tombol Terapkan tidak mungkin
+      // memakai data dari file sebelumnya.
+      if (mounted) {
+        setState(() {
+          busy = true;
+          clearSelection();
+        });
+      }
+      final data = file.bytes;
+      if (data == null) throw Exception('File tidak dapat dibaca.');
+      // Parsing berjalan di isolate terpisah, jadi spinner tetap berputar.
+      final result = await NextCargoTariffService.parse(file.name, data);
+      if (mounted) {
+        setState(() {
+          filename = file.name;
+          parsed = result;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(clearSelection);
+      msg('File tarif tidak valid: $e', true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
+
   Future<void> apply() async {
-    if(busy)return;
-    final data=bytes;if(data==null||preview==null)return;
-    final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
-      title:Text(replace?'Ganti seluruh tarif?':'Gabungkan tarif?'),
-      content:Text(replace?'Data aktif diganti dengan '+preview!.rowCount.toString()+' tujuan. Backup otomatis dibuat.':'Tujuan sama diperbarui dan tujuan lain dipertahankan. Backup otomatis dibuat.'),
-      actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Lanjutkan'))]));
-    if(yes!=true)return;setState(()=>busy=true);
-    try{final n=await NextCargoTariffService.importFile(filename ?? 'tarif.csv',data,replace:replace);await reload();if(!mounted)return;setState(() { filename=null; bytes=null; preview=null; });msg(n.toString()+' baris tersimpan offline.');}
-    catch(e){msg('Impor gagal: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
+    if (busy) return;
+    final data = parsed;
+    if (data == null) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(replace ? 'Ganti seluruh tarif?' : 'Gabungkan tarif?'),
+        content: Text(replace
+            ? 'Data aktif diganti dengan ${data.rowCount} tujuan. Backup otomatis dibuat.'
+            : 'Tujuan sama diperbarui dan tujuan lain dipertahankan. Backup otomatis dibuat.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Lanjutkan')),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    setState(() => busy = true);
+    try {
+      final n =
+          await NextCargoTariffService.importParsed(data, replace: replace);
+      await reload();
+      if (!mounted) return;
+      setState(clearSelection);
+      msg('$n baris tersimpan offline.');
+    } catch (e) {
+      msg('Impor gagal: $e', true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
+
   Future<void> restore() async {
-    final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Pulihkan backup?'),content:const Text('Tarif aktif dikembalikan ke kondisi sebelum impor terakhir.'),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Pulihkan'))]));
-    if(yes!=true)return;setState(()=>busy=true);
-    try{final ok=await NextCargoTariffService.restore();await reload();msg(ok?'Backup dipulihkan.':'Backup belum tersedia.',!ok);}catch(e){msg('Pemulihan gagal: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Pulihkan backup?'),
+        content: const Text(
+            'Tarif aktif dikembalikan ke kondisi sebelum impor terakhir.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Pulihkan')),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    setState(() => busy = true);
+    try {
+      final ok = await NextCargoTariffService.restore();
+      await reload();
+      msg(ok ? 'Backup dipulihkan.' : 'Backup belum tersedia.', !ok);
+    } catch (e) {
+      msg('Pemulihan gagal: $e', true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
-  @override Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:const Text('Kelola Tarif NEXT Cargo'),backgroundColor:const Color(0xFFD32F2F),foregroundColor:Colors.white),
-    body:ListView(padding:const EdgeInsets.all(16),children:[
-      Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('Database lokal: '+count.toString()+' tujuan',style:Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height:8),const Text('Asal tarif MALANG KOTA. Semua 25 kolom disimpan di SQLite dan dapat dicari offline.'),
-        const SizedBox(height:12),Wrap(spacing:8,children:[
-          FilledButton.icon(onPressed:busy?null:pick,icon:const Icon(Icons.upload_file),label:const Text('Impor file tarif')),
-          OutlinedButton.icon(onPressed:busy?null:restore,icon:const Icon(Icons.restore),label:const Text('Pulihkan backup'))]),
-      ]))),
-      if(preview!=null)...[
-        Text('Pratinjau: '+(filename??''),style:Theme.of(context).textTheme.titleMedium),
-        Text(preview!.rowCount.toString()+' baris valid • Asal MALANG KOTA'),
-        SegmentedButton<bool>(segments:const [ButtonSegment(value:true,label:Text('Ganti semua')),ButtonSegment(value:false,label:Text('Gabungkan'))],selected:{replace},onSelectionChanged:(v)=>setState(()=>replace=v.first)),
-        ...preview!.sampleDestinations.map((s)=>ListTile(dense:true,leading:const Icon(Icons.location_on_outlined),title:Text(s))),
-        FilledButton.icon(onPressed:busy?null:apply,icon:const Icon(Icons.check_circle),label:const Text('Terapkan tarif')),
-        TextButton(onPressed:busy?null:()=>setState(() { preview=null; bytes=null; filename=null; }),child:const Text('Batalkan')),
-      ],
-      if(busy)const Padding(padding:EdgeInsets.all(24),child:Center(child:CircularProgressIndicator())),
-      const Text('Format didukung: CSV, JSON, dan Excel XLSX. Header NEXT Cargo dideteksi otomatis; seluruh 25 kolom wajib tersedia.'),
-    ]),
-  );
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = parsed?.preview;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kelola Tarif NEXT Cargo'),
+        backgroundColor: const Color(0xFFD32F2F),
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Database lokal: $count tujuan',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  const Text(
+                      'Asal tarif MALANG KOTA. Semua 25 kolom disimpan di SQLite dan dapat dicari offline.'),
+                  const SizedBox(height: 12),
+                  Wrap(spacing: 8, children: [
+                    FilledButton.icon(
+                      onPressed: busy ? null : pick,
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Impor file tarif'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy ? null : restore,
+                      icon: const Icon(Icons.restore),
+                      label: const Text('Pulihkan backup'),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          if (preview != null) ...[
+            Text('Pratinjau: ${filename ?? ''}',
+                style: Theme.of(context).textTheme.titleMedium),
+            Text('${preview.rowCount} baris valid • Asal MALANG KOTA'),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: true, label: Text('Ganti semua')),
+                ButtonSegment(value: false, label: Text('Gabungkan')),
+              ],
+              selected: {replace},
+              onSelectionChanged: (v) => setState(() => replace = v.first),
+            ),
+            ...preview.sampleDestinations.map((s) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: Text(s),
+                )),
+            FilledButton.icon(
+              onPressed: busy ? null : apply,
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Terapkan tarif'),
+            ),
+            TextButton(
+              onPressed: busy ? null : () => setState(clearSelection),
+              child: const Text('Batalkan'),
+            ),
+          ],
+          if (busy)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          const Text(
+              'Format didukung: CSV (pemisah koma, titik koma, atau tab), JSON, dan Excel XLSX. Header NEXT Cargo dideteksi otomatis; seluruh 25 kolom wajib tersedia. Sel berisi rumus Excel ditolak: simpan sebagai nilai.'),
+        ],
+      ),
+    );
+  }
 }

@@ -11,7 +11,7 @@
     </queries>
 
     <application
-        android:label="LRT Voice Agent"
+        android:label="Cargo Voice Agent"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

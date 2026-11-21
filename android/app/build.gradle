@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.lrt_voice_agent_offline"
+    namespace = "com.example.cargo_voice_agent_offline"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,8 +22,8 @@ android {
         applicationId = "com.example.lrt_voice_agent_offline"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 54
+        versionName = "1.0.0+54"
     }
 
     buildTypes {

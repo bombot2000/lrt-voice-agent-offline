@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:excel/excel.dart' as xls;
-import 'package:lrt_voice_agent_offline/next_cargo_tariff_service.dart';
+import 'package:cargo_voice_agent_offline/next_cargo_tariff_service.dart';
 
 void main() {
   const header = 'Asal Kota,Tj. Propinsi,Tj. Kota,Tj. Kecamatan,Tj. Kelurahan,Handler,Stt Dooring,Lead Time,Tarif 10Kg,Min Reg,Tarif Reg,Min SP1,Tarif SP1,Min SP2,Tarif SP2,Min SP3,Tarif SP3,Tarif Khusus,Motor 100cc,Motor 125cc,Motor 150cc,Motor 250cc,Motor 500cc,Motor 750cc,Sepeda';
@@ -90,5 +90,43 @@ void main() {
       () => NextCargoTariffService.preview('sample.csv', bytes('asal,tujuan,layanan,ongkir\nMALANG,SURABAYA,REG,15000')),
       throwsFormatException,
     );
+  });
+
+  group('normalisasi dan validasi impor', () {
+    test('membaca CSV titik koma dan akhir baris CRLF', () async {
+      final semicolon = '$header\r\n$row'.replaceAll(',', ';');
+      final parsed = await NextCargoTariffService.parse('id.csv', bytes(semicolon));
+      expect(parsed.rowCount, 1);
+      expect(parsed.records.single['tarif_reg'], '4700');
+    });
+
+    test('angka berformat ribuan dinormalisasi saat impor', () async {
+      final formatted = row.replaceFirst(',4700,', ',"4.700",').replaceFirst(',25,', ',25.0,');
+      final parsed = await NextCargoTariffService.parse('a.csv', bytes('$header\n$formatted'));
+      expect(parsed.records.single['tarif_reg'], '4700');
+      expect(parsed.records.single['min_reg'], '25');
+    });
+
+    test('nilai yang sama dengan format berbeda bukan konflik', () async {
+      final alt = row.replaceFirst(',4700,', ',4700.0,');
+      final result = await NextCargoTariffService.preview('a.csv', bytes('$header\n$row\n$alt'));
+      expect(result.rowCount, 1);
+    });
+
+    test('menolak sel rumus Excel pada kolom tarif', () async {
+      final formula = row.replaceFirst(',4700,', ',=B2*2,');
+      await expectLater(
+        NextCargoTariffService.preview('a.csv', bytes('$header\n$formula')),
+        throwsFormatException,
+      );
+    });
+
+    test('menolak kolom angka yang berisi teks atau rentang', () async {
+      final text = row.replaceFirst(',4700,', ',10-20,');
+      await expectLater(
+        NextCargoTariffService.preview('a.csv', bytes('$header\n$text')),
+        throwsFormatException,
+      );
+    });
   });
 }

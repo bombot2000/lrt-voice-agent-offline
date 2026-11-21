@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
+import 'answer_engine.dart';
 import 'next_cargo_tariff_service.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
@@ -8,19 +9,19 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 void main() {
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: LrtOfflineVoiceAgentPage(),
+    home: CargoVoiceAgentPage(),
   ));
 }
 
-class LrtOfflineVoiceAgentPage extends StatefulWidget {
-  const LrtOfflineVoiceAgentPage({super.key});
+class CargoVoiceAgentPage extends StatefulWidget {
+  const CargoVoiceAgentPage({super.key});
 
   @override
-  State<LrtOfflineVoiceAgentPage> createState() =>
-      _LrtOfflineVoiceAgentPageState();
+  State<CargoVoiceAgentPage> createState() =>
+      _CargoVoiceAgentPageState();
 }
 
-class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
+class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   static const String _defaultStatus =
       'Mode Offline • Tekan mikrofon untuk bertanya';
   static const String _listeningStatus = 'Mendengarkan...';
@@ -28,6 +29,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
   final ScrollController _scrollController = ScrollController();
+  final AnswerEngine _engine = const AnswerEngine(SqliteTariffLookup());
 
   bool _speechReady = false;
   bool _isListening = false;
@@ -45,102 +47,8 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     {
       'role': 'agent',
       'text':
-          'Halo, saya asisten LRT mode offline. Tanyakan jam operasional, tarif, pembayaran, atau rute stasiun.'
+          'Halo, saya asisten ongkir NEXT Cargo mode offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo".'
     }
-  ];
-
-  // Catatan: kata kunci satu kata dicocokkan sebagai KATA UTUH,
-  // kata kunci berspasi dicocokkan sebagai frasa.
-  final List<_LrtKnowledgeItem> _knowledgeBase = const [
-    _LrtKnowledgeItem(
-      keywords: [
-        'jam',
-        'operasional',
-        'beroperasi',
-        'buka',
-        'tutup',
-        'jadwal',
-        'berangkat',
-        'terakhir',
-      ],
-      answer:
-          'LRT Jabodebek beroperasi setiap hari mulai pukul 05.00 hingga 23.30 WIB.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: [
-        'tarif',
-        'harga',
-        'tiket',
-        'ongkos',
-        'ongkir',
-        'biaya',
-        'mahal',
-        'murah',
-        'berapa harga',
-      ],
-      answer:
-          'Data tarif rute belum diimpor. Buka menu Kelola Data Ongkir untuk memasukkan file tarif terbaru.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: [
-        'bayar',
-        'pembayaran',
-        'kartu',
-        'emoney',
-        'e-money',
-        'flazz',
-        'brizzi',
-        'tapcash',
-        'qris',
-        'saldo',
-      ],
-      answer:
-          'Pembayaran menggunakan Kartu Uang Elektronik bank yang tap in dan tap out harus sama, atau metode pembayaran resmi yang tersedia di stasiun.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: [
-        'transit',
-        'pindah',
-        'krl',
-        'commuter',
-        'transjakarta',
-        'busway',
-        'cawang',
-        'dukuh atas',
-      ],
-      answer:
-          'Transit utama LRT Jabodebek berada di Stasiun Cawang untuk perpindahan lintas Harjamukti dan Jatimulya, serta Stasiun Dukuh Atas untuk akses KRL dan TransJakarta.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: ['harjamukti', 'cibubur', 'ciracas', 'kampung rambutan'],
-      answer:
-          'Lini Harjamukti melayani rute dari Stasiun Harjamukti menuju Cawang dan Dukuh Atas.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: ['jatimulya', 'bekasi', 'bekasi barat', 'cikunir'],
-      answer:
-          'Lini Jatimulya melayani rute dari Stasiun Jatimulya menuju Cawang dan Dukuh Atas.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: ['velodrome', 'pegangsaan', 'kelapa gading', 'lrt jakarta'],
-      answer:
-          'LRT Jakarta melayani rute Pegangsaan Dua hingga Velodrome dengan koneksi TransJakarta.',
-    ),
-    _LrtKnowledgeItem(
-      keywords: [
-        'halo',
-        'hai',
-        'selamat',
-        'pagi',
-        'siang',
-        'sore',
-        'malam',
-        'bantuan',
-        'bisa apa',
-      ],
-      answer:
-          'Saya bisa membantu info jam operasional, tarif, pembayaran, transit, dan rute stasiun LRT secara offline.',
-    ),
   ];
 
   @override
@@ -153,66 +61,6 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => const FareManagerPage(),
     ));
-  }
-
-  Future<String?> _findImportedFare(String query) async {
-    final matches = await NextCargoTariffService.findDestination(query);
-    if (matches.isEmpty) {
-      final count = await NextCargoTariffService.count();
-      if (count == 0) return null;
-      return 'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $count tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.';
-    }
-    if (matches.length > 1) {
-      final choices = matches.take(5).map((r) => [r['village'], r['district'], r['city'], r['province']].join(', ')).join('; ');
-      return 'Ada beberapa tujuan yang cocok. Sebutkan kecamatan atau kelurahan lebih lengkap. Contoh: $choices.';
-    }
-    final r = matches.first;
-    String money(num value) {
-      final n = value.round();
-      final digits = n.abs().toString();
-      final grouped = digits.replaceAllMapped(RegExp(r'(?<=\d)(?=(\d{3})+$)'), (_) => '.');
-      return 'Rp $grouped';
-    }
-    num? number(Object? value) {
-      final raw = (value ?? '').toString().trim();
-      if (raw.isEmpty) return null;
-      return num.tryParse(raw.replaceAll(',', '.').replaceAll(RegExp(r'[^0-9.]'), ''));
-    }
-    final weightMatch = RegExp(r'(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogram)', caseSensitive: false).firstMatch(query);
-    final weight = weightMatch == null ? null : number(weightMatch.group(1));
-    final destination = [r['village'], r['district'], r['city'], r['province']].join(', ');
-    final services = [
-      ('Reguler', 'min_reg', 'tarif_reg'),
-      ('SP1', 'min_sp1', 'tarif_sp1'),
-      ('SP2', 'min_sp2', 'tarif_sp2'),
-      ('SP3', 'min_sp3', 'tarif_sp3'),
-    ];
-    final lowerQuery = query.toLowerCase();
-    final requestedService = lowerQuery.contains('sp3') ? 'SP3'
-        : lowerQuery.contains('sp2') ? 'SP2'
-        : lowerQuery.contains('sp1') ? 'SP1'
-        : (lowerQuery.contains('reguler') || RegExp(r'\breg\b').hasMatch(lowerQuery)) ? 'Reguler' : null;
-    final output = <String>[];
-    for (final service in services) {
-      final minimum = number(r[service.$2]);
-      final rate = number(r[service.$3]);
-      if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
-      if (requestedService != null && requestedService != service.$1) continue;
-      if (weight == null) {
-        output.add('${service.$1}: minimum $minimum kg, tarif ${money(rate)}/kg.');
-      } else {
-        final billableWeight = NextCargoTariffService.billableWeight(weight, minimum);
-        final total = billableWeight * rate;
-        output.add('${service.$1}: berat aktual $weight kg, berat tagihan $billableWeight kg × ${money(rate)}/kg = ${money(total)}.');
-      }
-    }
-    if (output.isEmpty && requestedService != null) {
-      return 'Tarif $requestedService tidak tersedia untuk tujuan $destination.';
-    }
-    final prefix = weight == null
-        ? 'Tarif NEXT Cargo dari MALANG KOTA ke $destination.'
-        : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke $destination untuk berat $weight kg (minimum layanan berlaku).';
-    return '$prefix ${output.join(' ')} Tarif 10 kg ${r['tarif_10kg'] ?? '-'}; tarif khusus ${r['tarif_khusus'] ?? '-'}. Lead time ${r['lead_time'] ?? '-'} hari. Handler ${r['handler'] ?? '-'}.';
   }
 
   Future<void> _initVoice() async {
@@ -367,50 +215,6 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     );
   }
 
-  Future<String> _matchOfflineAnswer(String query) async {
-    final fareQuestion = await _findImportedFare(query);
-    if (fareQuestion != null &&
-        (query.toLowerCase().contains('tarif') ||
-         query.toLowerCase().contains('harga') ||
-         query.toLowerCase().contains('ongkos') ||
-         query.toLowerCase().contains('ongkir') ||
-         query.toLowerCase().contains('biaya') ||
-         query.toLowerCase().contains('berapa'))) {
-      return fareQuestion;
-    }
-    final normalized = query
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s-]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    final words =
-        normalized.split(' ').where((w) => w.isNotEmpty).toSet();
-
-    _LrtKnowledgeItem? bestMatch;
-    int highestScore = 0;
-
-    for (final item in _knowledgeBase) {
-      int score = 0;
-      for (final kw in item.keywords) {
-        if (kw.contains(' ')) {
-          if (normalized.contains(kw)) score += 2;
-        } else if (words.contains(kw)) {
-          score += 1;
-        }
-      }
-      if (score > highestScore) {
-        highestScore = score;
-        bestMatch = item;
-      }
-    }
-
-    if (bestMatch != null && highestScore > 0) {
-      return bestMatch.answer;
-    }
-
-    return 'Maaf, data offline saya belum mencakup pertanyaan itu. Coba tanyakan jam operasional, tarif, pembayaran, transit Cawang atau Dukuh Atas, atau rute stasiun.';
-  }
-
   Future<void> _handleOfflineQuery(String query) async {
     // Abaikan hasil final ganda yang identik dalam waktu singkat.
     final now = DateTime.now();
@@ -421,7 +225,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     _lastQuery = query;
     _lastQueryTime = now;
 
-    final reply = await _matchOfflineAnswer(query);
+    final reply = await _engine.answer(query);
 
     if (!mounted) return;
     setState(() {
@@ -462,7 +266,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
-        title: const Text('LRT Voice Agent (Offline)',
+        title: const Text('Cargo Voice Agent (Offline)',
             style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
@@ -580,14 +384,4 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
       ),
     );
   }
-}
-
-class _LrtKnowledgeItem {
-  final List<String> keywords;
-  final String answer;
-
-  const _LrtKnowledgeItem({
-    required this.keywords,
-    required this.answer,
-  });
 }
