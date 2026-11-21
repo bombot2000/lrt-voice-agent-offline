@@ -345,10 +345,10 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     });
 
     await _speech.listen(
-      localeId: _localeId,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
       listenOptions: stt.SpeechListenOptions(
+        localeId: _localeId,
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3),
         onDevice: true,
         partialResults: true,
         cancelOnError: true,
