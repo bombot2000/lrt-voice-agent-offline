@@ -1,4 +1,4 @@
-/// Utilitas murni (tanpa dependensi Flutter/plugin) untuk angka tarif.
+// Utilitas murni (tanpa dependensi Flutter/plugin) untuk angka tarif.
 
 /// Mengurai angka tarif/berat dari teks CSV, Excel, atau JSON.
 ///
