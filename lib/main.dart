@@ -160,30 +160,59 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     if (matches.isEmpty) {
       final count = await NextCargoTariffService.count();
       if (count == 0) return null;
-      return 'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk ' + count.toString() + ' tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.';
+      return 'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk \$count tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.';
     }
     if (matches.length > 1) {
-      final choices = matches.take(5).map((r) => [r['village'],r['district'],r['city'],r['province']].join(', ')).join('; ');
-      return 'Ada beberapa tujuan yang cocok. Sebutkan kecamatan atau kelurahan lebih lengkap. Contoh: ' + choices + '.';
+      final choices = matches.take(5).map((r) => [r['village'], r['district'], r['city'], r['province']].join(', ')).join('; ');
+      return 'Ada beberapa tujuan yang cocok. Sebutkan kecamatan atau kelurahan lebih lengkap. Contoh: \$choices.';
     }
-    final r=matches.first;
-    String money(Object? value) {
-      final raw=(value??'').toString().trim();
-      if(raw.isEmpty||raw=='0')return 'tidak tersedia';
-      final n=int.tryParse(raw.replaceAll(RegExp(r'[^0-9-]'),''));
-      if(n==null)return raw;
-      final digits=n.abs().toString();
-      final grouped=digits.replaceAllMapped(RegExp(r'(?<=\d)(?=(\d{3})+$)'),(_)=>'.');
-      return 'Rp '+(n<0?'-':'')+grouped;
+    final r = matches.first;
+    String money(num value) {
+      final n = value.round();
+      final digits = n.abs().toString();
+      final grouped = digits.replaceAllMapped(RegExp(r'(?<=\d)(?=(\d{3})+$)'), (_) => '.');
+      return 'Rp \$grouped';
     }
-    final destination=[r['village'],r['district'],r['city'],r['province']].join(', ');
-    return 'Tarif NEXT Cargo dari MALANG KOTA ke '+destination+
-      '. Reguler minimum '+(r['min_reg']??'-').toString()+' kg, tarif '+money(r['tarif_reg'])+
-      '. SP1 minimum '+(r['min_sp1']??'-').toString()+' kg, tarif '+money(r['tarif_sp1'])+
-      '. SP2 minimum '+(r['min_sp2']??'-').toString()+' kg, tarif '+money(r['tarif_sp2'])+
-      '. SP3 minimum '+(r['min_sp3']??'-').toString()+' kg, tarif '+money(r['tarif_sp3'])+
-      '. Tarif 10 kg '+money(r['tarif_10kg'])+'; tarif khusus '+money(r['tarif_khusus'])+
-      '. Lead time '+(r['lead_time']??'-').toString()+' hari. Handler '+(r['handler']??'-').toString()+'.';
+    num? number(Object? value) {
+      final raw = (value ?? '').toString().trim();
+      if (raw.isEmpty) return null;
+      return num.tryParse(raw.replaceAll(',', '.').replaceAll(RegExp(r'[^0-9.]'), ''));
+    }
+    final weightMatch = RegExp(r'(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogram)', caseSensitive: false).firstMatch(query);
+    final weight = weightMatch == null ? null : number(weightMatch.group(1));
+    final destination = [r['village'], r['district'], r['city'], r['province']].join(', ');
+    final services = [
+      ('Reguler', 'min_reg', 'tarif_reg'),
+      ('SP1', 'min_sp1', 'tarif_sp1'),
+      ('SP2', 'min_sp2', 'tarif_sp2'),
+      ('SP3', 'min_sp3', 'tarif_sp3'),
+    ];
+    final lowerQuery = query.toLowerCase();
+    final requestedService = lowerQuery.contains('sp3') ? 'SP3'
+        : lowerQuery.contains('sp2') ? 'SP2'
+        : lowerQuery.contains('sp1') ? 'SP1'
+        : (lowerQuery.contains('reguler') || RegExp(r'\breg\b').hasMatch(lowerQuery)) ? 'Reguler' : null;
+    final output = <String>[];
+    for (final service in services) {
+      final minimum = number(r[service.$2]);
+      final rate = number(r[service.$3]);
+      if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
+      if (requestedService != null && requestedService != service.$1) continue;
+      if (weight == null) {
+        output.add('\${service.$1}: minimum \$minimum kg, tarif \${money(rate)}/kg.');
+      } else {
+        final billableWeight = weight > minimum ? weight : minimum;
+        final total = billableWeight * rate;
+        output.add('\${service.$1}: berat aktual \$weight kg, berat tagihan \$billableWeight kg × \${money(rate)}/kg = \${money(total)}.');
+      }
+    }
+    if (output.isEmpty && requestedService != null) {
+      return 'Tarif \$requestedService tidak tersedia untuk tujuan \$destination.';
+    }
+    final prefix = weight == null
+        ? 'Tarif NEXT Cargo dari MALANG KOTA ke \$destination.'
+        : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke \$destination untuk berat \$weight kg (minimum layanan berlaku).';
+    return '\$prefix \${output.join(' ')} Tarif 10 kg \${r['tarif_10kg'] ?? '-'}; tarif khusus \${r['tarif_khusus'] ?? '-'}. Lead time \${r['lead_time'] ?? '-'} hari. Handler \${r['handler'] ?? '-'}.';
   }
 
   Future<void> _initVoice() async {
