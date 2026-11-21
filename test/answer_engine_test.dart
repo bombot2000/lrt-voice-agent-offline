@@ -211,11 +211,27 @@ void main() {
     test('tanpa berat menampilkan minimum dan tarif per kg', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       final a = await engine.answer('tarif ke Abiansemal');
-      expect(a, contains('Reguler: minimum 25 kg, tarif Rp 4.700/kg.'));
-      expect(a, contains('SP3: minimum 1000 kg, tarif Rp 4.000/kg.'));
-      expect(a, isNot(contains('SP2'))); // kolom kosong dilewati
+      expect(a, contains('Reguler: minimum 25 kg, total tarif minimum Rp 117.500; setiap kg berikutnya Rp 4.700/kg.'));
+      expect(a, isNot(contains('SP1')));
+      expect(a, isNot(contains('SP2')));
+      expect(a, isNot(contains('SP3')));
       expect(a, contains('Tarif khusus Rp 3.400.'));
       expect(a, isNot(contains('Tarif 10 kg'))); // nilai 0 tidak dibacakan
+    });
+
+
+    test('tarif tujuan tanpa berat memakai Reguler dan menampilkan total minimum', () async {
+      final row = <String, Object?>{
+        ...bekasiJatiAsih,
+        'min_reg': '20',
+        'tarif_reg': '3100',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+      final a = await engine.answer('tarif ke Bekasi Jati Asih');
+      expect(a, contains('Reguler: minimum 20 kg, total tarif minimum Rp 62.000; setiap kg berikutnya Rp 3.100/kg.'));
+      expect(a, isNot(contains('SP1')));
+      expect(a, isNot(contains('SP2')));
+      expect(a, isNot(contains('SP3')));
     });
 
     test('beberapa tujuan cocok meminta perincian', () async {
