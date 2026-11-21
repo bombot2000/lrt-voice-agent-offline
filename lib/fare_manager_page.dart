@@ -15,10 +15,10 @@ class _FareManagerPageState extends State<FareManagerPage> {
   void msg(String s,[bool error=false]){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s),backgroundColor:error?Colors.red:Colors.green));}
   Future<void> pick() async {
     try{
-      final f=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['csv'],withData:true);
+      final f=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['csv','json','xlsx'],withData:true);
       if(f==null)return; final file=f.files.single; final data=file.bytes;
       if(data==null)throw Exception('File tidak dapat dibaca.');
-      setState(()=>busy=true); final p=await NextCargoTariffService.preview(data);
+      setState(()=>busy=true); final p=await NextCargoTariffService.preview(file.name,data);
       if(mounted)setState(() { filename=file.name; bytes=data; preview=p; });
     }catch(e){msg('CSV tidak valid: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
   }
@@ -29,7 +29,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       content:Text(replace?'Data aktif diganti dengan '+preview!.rowCount.toString()+' tujuan. Backup otomatis dibuat.':'Tujuan sama diperbarui dan tujuan lain dipertahankan. Backup otomatis dibuat.'),
       actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Lanjutkan'))]));
     if(yes!=true)return;setState(()=>busy=true);
-    try{final n=await NextCargoTariffService.importCsv(data,replace:replace);await reload();if(!mounted)return;setState(() { filename=null; bytes=null; preview=null; });msg(n.toString()+' baris tersimpan offline.');}
+    try{final n=await NextCargoTariffService.importFile(filename ?? 'tarif.csv',data,replace:replace);await reload();if(!mounted)return;setState(() { filename=null; bytes=null; preview=null; });msg(n.toString()+' baris tersimpan offline.');}
     catch(e){msg('Impor gagal: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> restore() async {
@@ -44,7 +44,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
         Text('Database lokal: '+count.toString()+' tujuan',style:Theme.of(context).textTheme.titleLarge),
         const SizedBox(height:8),const Text('Asal tarif MALANG KOTA. Semua 25 kolom disimpan di SQLite dan dapat dicari offline.'),
         const SizedBox(height:12),Wrap(spacing:8,children:[
-          FilledButton.icon(onPressed:busy?null:pick,icon:const Icon(Icons.upload_file),label:const Text('Impor CSV NEXT Cargo')),
+          FilledButton.icon(onPressed:busy?null:pick,icon:const Icon(Icons.upload_file),label:const Text('Impor file tarif')),
           OutlinedButton.icon(onPressed:busy?null:restore,icon:const Icon(Icons.restore),label:const Text('Pulihkan backup'))]),
       ]))),
       if(preview!=null)...[
@@ -56,7 +56,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
         TextButton(onPressed:busy?null:()=>setState(() { preview=null; bytes=null; filename=null; }),child:const Text('Batalkan')),
       ],
       if(busy)const Padding(padding:EdgeInsets.all(24),child:Center(child:CircularProgressIndicator())),
-      const Text('Header NEXT Cargo dideteksi otomatis walau file memiliki baris judul di atas header.'),
+      const Text('Format didukung: CSV, JSON, dan Excel XLSX. Header NEXT Cargo dideteksi otomatis; seluruh 25 kolom wajib tersedia.'),
     ]),
   );
 }
