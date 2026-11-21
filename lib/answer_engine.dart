@@ -185,12 +185,15 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
         .toList()
       ..sort((a, b) => b.minimum!.compareTo(a.minimum!));
 
-    final requestedMinimum = requested == null
-        ? null
-        : services
-            .where((service) => service.$1 == requested)
-            .map((service) => parseTariffNumber(r[service.$2]))
-            .firstOrNull;
+    double? requestedMinimum;
+    if (requested != null) {
+      for (final service in services) {
+        if (service.$1 == requested) {
+          requestedMinimum = parseTariffNumber(r[service.$2]);
+          break;
+        }
+      }
+    }
 
     if (requested != null && requestedMinimum != null && requestedMinimum > weight) {
       minimumNotice =
