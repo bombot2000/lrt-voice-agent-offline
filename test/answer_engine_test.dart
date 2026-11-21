@@ -187,6 +187,19 @@ void main() {
       expect(a, isNot(contains('SP2:')));
     });
 
+    test('berat 1200 kg tetap memilih SP3 meski pertanyaan menyebut Reguler', () async {
+      final row = <String, Object?>{
+        ...bekasiJatiAsih,
+        'min_sp2': '500',
+        'tarif_sp2': '4300',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 1200 kg Reguler');
+      expect(a, contains('SP3: berat aktual 1200 kg'));
+      expect(a, contains('Rp 4.800.000'));
+      expect(a, isNot(contains('Reguler:')));
+    });
+
     test('berat di bawah minimum memakai berat minimum layanan', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 10 kg');
