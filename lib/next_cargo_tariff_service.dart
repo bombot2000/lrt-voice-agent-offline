@@ -123,7 +123,13 @@ class NextCargoTariffService {
       if(norm(origin)!='malangkota') throw FormatException('Baris '+(i+1).toString()+': asal harus MALANG KOTA.');
       final p=cell(r,map['province']!), c=cell(r,map['city']!), d=cell(r,map['district']!), v=cell(r,map['village']!);
       if([p,c,d,v].any((x)=>x.isEmpty)) throw FormatException('Baris '+(i+1).toString()+': data tujuan tidak lengkap.');
-      final key=[p,c,d,v].map(norm).join('|');
+      // Untuk deteksi duplikat, abaikan kapitalisasi dan spasi berulang
+      // saja. Jangan menghapus seluruh spasi/tanda baca: "SRI MENANTI"
+      // dan "SRIMENANTI" adalah label sumber yang berbeda dan keduanya
+      // harus tetap dapat diimpor.
+      String duplicatePart(String value) =>
+          value.trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+      final key=[p,c,d,v].map(duplicatePart).join('|');
       if(!keys.add(key)) throw FormatException('Tujuan ganda: '+[p,c,d,v].join(' / '));
       count++; if(samples.length<8) samples.add([v,d,c,p].join(', '));
     }
