@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'fare_manager_page.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -30,6 +31,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   bool _speechReady = false;
   bool _isListening = false;
   bool _isSpeaking = false;
+  List<FareRecord> _fareRecords = [];
   String _statusText = _defaultStatus;
 
   // Locale id yang dipakai (di Android bisa "id_ID" atau "in_ID").
@@ -144,6 +146,33 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   void initState() {
     super.initState();
     _initVoice();
+    _loadFareRecords();
+  }
+
+  Future<void> _loadFareRecords() async {
+    final records = await FareDataService.load();
+    if (mounted) setState(() => _fareRecords = records);
+  }
+
+  Future<void> _openFareManager() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const FareManagerPage(),
+    ));
+    await _loadFareRecords();
+  }
+
+  String? _findImportedFare(String query) {
+    final q = query.toLowerCase();
+    for (final fare in _fareRecords) {
+      if (q.contains(fare.origin.toLowerCase()) &&
+          q.contains(fare.destination.toLowerCase())) {
+        return 'Tarif ${fare.origin} ke ${fare.destination} untuk layanan ${fare.service} adalah Rp ${fare.price}.';
+      }
+    }
+    if (_fareRecords.isNotEmpty) {
+      return 'Data tarif tersedia untuk ${_fareRecords.length} rute. Sebutkan stasiun asal dan tujuan sesuai nama pada data tarif.';
+    }
+    return null;
   }
 
   Future<void> _initVoice() async {
@@ -299,6 +328,14 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   }
 
   String _matchOfflineAnswer(String query) {
+    final fareQuestion = _findImportedFare(query);
+    if (fareQuestion != null &&
+        (query.toLowerCase().contains('tarif') ||
+         query.toLowerCase().contains('harga') ||
+         query.toLowerCase().contains('ongkos') ||
+         query.toLowerCase().contains('berapa'))) {
+      return fareQuestion;
+    }
     final normalized = query
         .toLowerCase()
         .replaceAll(RegExp(r'[^\w\s-]'), ' ')
@@ -385,6 +422,13 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
       appBar: AppBar(
         title: const Text('LRT Voice Agent (Offline)',
             style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            tooltip: 'Kelola Data Ongkir',
+            onPressed: _openFareManager,
+            icon: const Icon(Icons.price_change),
+          ),
+        ],
         backgroundColor: const Color(0xFFD32F2F),
         foregroundColor: Colors.white,
         elevation: 0,
