@@ -237,7 +237,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     final minimum = parseTariffNumber(r[minKey]);
     final rate = parseTariffNumber(r[rateKey]);
     if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
-    if (selectedService != null && selectedService != label) continue;
+    if (selectedService != label) continue;
     if (weight == null) {
       final minimumTotal = minimum * rate;
       lines.add(
