@@ -16,13 +16,22 @@ class _FareManagerPageState extends State<FareManagerPage> {
   Future<void> pick() async {
     try{
       final f=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['csv','json','xlsx'],withData:true);
-      if(f==null)return; final file=f.files.single; final data=file.bytes;
+      if(f==null)return;
+      final file=f.files.single;
+      // Hapus pratinjau lama segera setelah file baru dipilih agar tombol
+      // Terapkan tidak mungkin memakai bytes dari file sebelumnya.
+      if(mounted)setState(() { busy=true; filename=null; bytes=null; preview=null; });
+      final data=file.bytes;
       if(data==null)throw Exception('File tidak dapat dibaca.');
-      setState(()=>busy=true); final p=await NextCargoTariffService.preview(file.name,data);
-      if(mounted)setState(() { filename=file.name; bytes=data; preview=p; });
-    }catch(e){msg('File tarif tidak valid: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
+      final result=await NextCargoTariffService.preview(file.name,data);
+      if(mounted)setState(() { filename=file.name; bytes=data; preview=result; });
+    }catch(e){
+      if(mounted)setState(() { filename=null; bytes=null; preview=null; });
+      msg('File tarif tidak valid: '+e.toString(),true);
+    }finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> apply() async {
+    if(busy)return;
     final data=bytes;if(data==null||preview==null)return;
     final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
       title:Text(replace?'Ganti seluruh tarif?':'Gabungkan tarif?'),
