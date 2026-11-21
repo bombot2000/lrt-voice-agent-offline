@@ -168,10 +168,45 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     ('SP3', 'min_sp3', 'tarif_sp3'),
   ];
 
-  // Jika pengguna menyebut berat tanpa jenis layanan, gunakan Reguler
-  // sebagai tarif standar. Layanan lain hanya dihitung bila diminta eksplisit.
-  final selectedService = requested ?? (weight != null ? 'Reguler' : null);
+  // Tarif bertingkat dipilih berdasarkan batas minimum yang benar-benar
+  // terpenuhi. Berat 30 kg memakai Reguler min. 20 kg; SP1 min. 200 kg
+  // belum berlaku dan tidak boleh ikut dihitung.
+  String? selectedService;
+  String? minimumNotice;
+  if (weight != null) {
+    final eligible = services
+        .map((service) => (
+              label: service.$1,
+              minimum: parseTariffNumber(r[service.$2]),
+              rate: parseTariffNumber(r[service.$3]),
+            ))
+        .where((service) => service.minimum != null && service.rate != null &&
+            service.minimum! > 0 && service.rate! > 0 && weight >= service.minimum!)
+        .toList()
+      ..sort((a, b) => b.minimum!.compareTo(a.minimum!));
 
+    final requestedMinimum = requested == null
+        ? null
+        : services
+            .where((service) => service.$1 == requested)
+            .map((service) => parseTariffNumber(r[service.$2]))
+            .firstOrNull;
+
+    if (requested != null && requestedMinimum != null && requestedMinimum > weight) {
+      minimumNotice =
+          '$requested belum berlaku karena minimum ${formatPlainNumber(requestedMinimum)} kg; digunakan layanan dengan minimum yang sudah terpenuhi.';
+    }
+
+    if (requested != null && requestedMinimum != null && requestedMinimum <= weight) {
+      selectedService = requested;
+    } else if (eligible.isNotEmpty) {
+      selectedService = eligible.first.label;
+    } else if (requested != null) {
+      selectedService = requested;
+    }
+  } else {
+    selectedService = requested;
+  }
   final lines = <String>[];
   for (final (label, minKey, rateKey) in services) {
     final minimum = parseTariffNumber(r[minKey]);
@@ -199,7 +234,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
   // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
   // tarif/kg sehingga tidak dicampurkan ke total.
-  if (weight != null) return [prefix, ...lines].join(' ');
+  if (weight != null) return [prefix, if (minimumNotice != null) minimumNotice, ...lines].join(' ');
 
   final extras = <String>[];
   final tarif10 = parseTariffNumber(r['tarif_10kg']);
