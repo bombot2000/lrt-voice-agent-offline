@@ -80,6 +80,26 @@ void main() {
       expect(a, isNot(contains('25.0')));
     });
 
+    test('berat tanpa layanan memakai Reguler dan tidak mencampur kolom lain', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 30 kg');
+      expect(a, contains('Reguler: berat aktual 30 kg, berat tagihan 30 kg'));
+      expect(a, contains('Rp 141.000')); // 30 kg x Rp 4.700
+      expect(a, isNot(contains('SP1')));
+      expect(a, isNot(contains('SP3')));
+      expect(a, isNot(contains('Tarif khusus')));
+      expect(a, isNot(contains('Handler')));
+      expect(a, isNot(contains('Lead time')));
+    });
+
+    test('berat di bawah minimum memakai berat minimum layanan', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 10 kg');
+      expect(a, contains('berat aktual 10 kg, berat tagihan 25 kg'));
+      expect(a, contains('Rp 117.500')); // minimum 25 kg x Rp 4.700
+      expect(a, isNot(contains('SP1')));
+    });
+
     test('tanpa berat menampilkan minimum dan tarif per kg', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       final a = await engine.answer('tarif ke Abiansemal');
