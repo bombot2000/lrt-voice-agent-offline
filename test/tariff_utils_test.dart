@@ -38,6 +38,10 @@ void main() {
     expect(formatRupiah(0), 'Rp 0');
   });
 
+  test('destinationTokens menyatukan ejaan Jati Asih menjadi Jatiasih', () {
+    expect(destinationTokens('Bekasi Jati Asih 30 kg'), ['BEKASI', 'JATIASIH']);
+  });
+
   test('destinationTokens membuang kata perintah, angka, dan kata pendek', () {
     expect(destinationTokens('Tolong ongkir ke Abiansemal Badung 20 kilo reguler'),
         equals(['ABIANSEMAL', 'BADUNG']));
