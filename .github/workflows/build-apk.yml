@@ -30,6 +30,12 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Analyze Dart code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
       - run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
