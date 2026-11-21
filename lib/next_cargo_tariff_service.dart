@@ -128,7 +128,7 @@ class NextCargoTariffService {
       // dan "SRIMENANTI" adalah label sumber yang berbeda dan keduanya
       // harus tetap dapat diimpor.
       String duplicatePart(String value) =>
-          value.trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+          value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
       final key=[p,c,d,v].map(duplicatePart).join('|');
       if(!keys.add(key)) throw FormatException('Tujuan ganda: '+[p,c,d,v].join(' / '));
       count++; if(samples.length<8) samples.add([v,d,c,p].join(', '));
