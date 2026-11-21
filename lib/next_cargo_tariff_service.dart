@@ -124,7 +124,7 @@ class NextCargoTariffService {
   }
   static Future<List<Map<String,Object?>>> findDestination(String query) async {
     final db=await open();
-    const ignored={'berapa','tarif','ongkir','ongkos','harga','ke','dari','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo'};
+    const ignored={'berapa','tarif','ongkir','ongkos','harga','biaya','ke','dari','tujuan','menuju','pengiriman','kirim','paket','barang','berapa','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo'};
     final tokens=query.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'),' ').split(RegExp(r'\s+')).where((t)=>t.length>=3&&!ignored.contains(t.toLowerCase())).toSet().toList();
     if(tokens.isEmpty)return [];
     const fields=['province','city','district','village'];
