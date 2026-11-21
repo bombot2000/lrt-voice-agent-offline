@@ -113,8 +113,8 @@ class NextCargoTariffService {
     return {for(var i=0;i<cols.length;i++) cols[i]:found[expected[i]]!};
   }
   static String cell(List<dynamic> row,int i)=>i<row.length?row[i].toString().trim():'';
-  static Future<NextCargoImportPreview> preview(String name, Uint8List bytes) async {
-    final rows=decode(name,bytes), at=headerAt(rows), map=mapHeader(rows[at]);
+  static NextCargoImportPreview _previewRows(List<List<dynamic>> rows) {
+    final at=headerAt(rows), map=mapHeader(rows[at]);
     final keys=<String>{}, samples=<String>[];
     var count=0;
     for(var i=at+1;i<rows.length;i++) {
@@ -127,14 +127,18 @@ class NextCargoTariffService {
       if(!keys.add(key)) throw FormatException('Tujuan ganda: '+[p,c,d,v].join(' / '));
       count++; if(samples.length<8) samples.add([v,d,c,p].join(', '));
     }
-    if(count==0) throw const FormatException('CSV tidak memiliki baris tarif.');
+    if(count==0) throw const FormatException('File tidak memiliki baris tarif.');
     return NextCargoImportPreview(count,samples);
   }
+  static Future<NextCargoImportPreview> preview(String name, Uint8List bytes) async =>
+      _previewRows(decode(name,bytes));
+
   static Future<int> importFile(String name, Uint8List bytes,{required bool replace}) async {
-    // Validasi ulang di lapisan service agar impor tidak bisa melewati preview UI.
-    // Semua pemeriksaan selesai sebelum transaksi dan backup database dimulai.
-    await preview(name, bytes);
-    final rows=decode(name,bytes), at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
+    // Decode satu kali saja. XLSX besar dapat berisi lebih dari satu juta sel;
+    // parsing ganda di sini meningkatkan penggunaan memori pada perangkat Android.
+    final rows=decode(name,bytes);
+    _previewRows(rows); // Validasi sebelum backup atau perubahan database.
+    final at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
     var count=0;
     await db.transaction((txn) async {
       await txn.delete('tariff_backup');
