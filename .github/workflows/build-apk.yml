@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,7 +41,11 @@ jobs:
 
       - run: flutter build apk --release
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lrt-voice-agent-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
+            --title "LRT Voice Agent APK ${GITHUB_RUN_NUMBER}" \
+            --notes "APK otomatis dari commit ${GITHUB_SHA}. Analyze dan test lulus."
