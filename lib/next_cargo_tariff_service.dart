@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -32,7 +33,29 @@ class NextCargoTariffService {
       });
     return _db!;
   }
-  static List<List<dynamic>> decode(Uint8List bytes) => const CsvToListConverter(shouldParseNumbers: false).convert(utf8.decode(bytes,allowMalformed:true).replaceFirst('\uFEFF',''));
+  static List<List<dynamic>> decode(String name, Uint8List bytes) {
+    final lower=name.toLowerCase();
+    if(lower.endsWith('.csv')) {
+      return const CsvToListConverter(shouldParseNumbers:false).convert(
+        utf8.decode(bytes,allowMalformed:true).replaceFirst('\uFEFF',''));
+    }
+    if(lower.endsWith('.xlsx')) {
+      final book=Excel.decodeBytes(bytes);
+      if(book.tables.isEmpty) throw const FormatException('Sheet Excel tidak ditemukan.');
+      return book.tables.values.first.rows.map((r)=>r.map((c)=>c?.value??'').toList()).toList();
+    }
+    if(lower.endsWith('.json')) {
+      final decoded=jsonDecode(utf8.decode(bytes,allowMalformed:true));
+      final data=decoded is List ? decoded : decoded is Map
+        ? (decoded['data']??decoded['tarif']??decoded['fares']) : null;
+      if(data is! List || data.isEmpty || data.first is! Map) {
+        throw const FormatException('JSON harus berisi daftar objek tarif NEXT Cargo.');
+      }
+      final jsonHeaders=(data.first as Map).keys.map((k)=>k.toString()).toList();
+      return [jsonHeaders,...data.map((item)=>jsonHeaders.map((h)=>(item as Map)[h]??'').toList())];
+    }
+    throw const FormatException('Gunakan file CSV, JSON, atau Excel .xlsx.');
+  }
   static int headerAt(List<List<dynamic>> rows) {
     for (var i=0;i<rows.length;i++) {
       if (rows[i].isNotEmpty && norm(rows[i][0].toString().trim())=='asalkota') return i;
@@ -48,8 +71,8 @@ class NextCargoTariffService {
     return {for(var i=0;i<cols.length;i++) cols[i]:found[expected[i]]!};
   }
   static String cell(List<dynamic> row,int i)=>i<row.length?row[i].toString().trim():'';
-  static Future<NextCargoImportPreview> preview(Uint8List bytes) async {
-    final rows=decode(bytes), at=headerAt(rows), map=mapHeader(rows[at]);
+  static Future<NextCargoImportPreview> preview(String name, Uint8List bytes) async {
+    final rows=decode(name,bytes), at=headerAt(rows), map=mapHeader(rows[at]);
     final keys=<String>{}, samples=<String>[];
     var count=0;
     for(var i=at+1;i<rows.length;i++) {
@@ -65,8 +88,8 @@ class NextCargoTariffService {
     if(count==0) throw const FormatException('CSV tidak memiliki baris tarif.');
     return NextCargoImportPreview(count,samples);
   }
-  static Future<int> importCsv(Uint8List bytes,{required bool replace}) async {
-    final rows=decode(bytes), at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
+  static Future<int> importFile(String name, Uint8List bytes,{required bool replace}) async {
+    final rows=decode(name,bytes), at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
     var count=0;
     await db.transaction((txn) async {
       await txn.delete('tariff_backup');
