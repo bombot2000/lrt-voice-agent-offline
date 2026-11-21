@@ -140,14 +140,3 @@ class NextCargoTariffService {
     return db.query('tariffs',columns:cols,where:clauses.join(' AND '),whereArgs:args,limit:8);
   }
 }
-).hasMatch(t)&&!ignored.contains(t.toLowerCase())).toSet().toList();
-    if(tokens.isEmpty)return [];
-    const fields=['province','city','district','village'];
-    final clauses=<String>[], args=<Object?>[];
-    for(final token in tokens) {
-      clauses.add('('+fields.map((f)=>'$f LIKE ?').join(' OR ')+')');
-      for(var i=0;i<fields.length;i++){args.add('%'+token+'%');}
-    }
-    return db.query('tariffs',columns:cols,where:clauses.join(' AND '),whereArgs:args,limit:8);
-  }
-}
