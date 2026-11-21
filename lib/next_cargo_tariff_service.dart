@@ -24,6 +24,8 @@ class NextCargoTariffService {
       onCreate: (db, version) async {
         await db.execute('CREATE TABLE tariffs (id INTEGER PRIMARY KEY AUTOINCREMENT, ' + sqlCols() + ', UNIQUE(province,city,district,village))');
         await db.execute('CREATE TABLE tariff_backup (id INTEGER PRIMARY KEY, ' + sqlCols() + ')');
+        await db.execute('CREATE TABLE tariff_backup_meta (id INTEGER PRIMARY KEY CHECK(id = 1), available INTEGER NOT NULL)');
+        await db.insert('tariff_backup_meta', {'id': 1, 'available': 0});
         for (final f in ['province','city','district','village']) {
           await db.execute('CREATE INDEX idx_tariff_' + f + ' ON tariffs(' + f + ')');
         }
@@ -69,6 +71,7 @@ class NextCargoTariffService {
     await db.transaction((txn) async {
       await txn.delete('tariff_backup');
       await txn.execute('INSERT INTO tariff_backup (id,'+cols.join(',')+') SELECT id,'+cols.join(',')+' FROM tariffs');
+      await txn.update('tariff_backup_meta', {'available': 1}, where: 'id = 1');
       if(replace) await txn.delete('tariffs');
       var batch=txn.batch(), pending=0;
       for(var i=at+1;i<rows.length;i++) {
@@ -88,10 +91,11 @@ class NextCargoTariffService {
   static Future<bool> restore() async {
     final db=await open();
     return db.transaction((t) async {
-      final n=Sqflite.firstIntValue(await t.rawQuery('SELECT COUNT(*) AS n FROM tariff_backup'))??0;
-      if(n==0)return false;
+      final available=Sqflite.firstIntValue(await t.rawQuery('SELECT available FROM tariff_backup_meta WHERE id = 1'))??0;
+      if(available==0)return false;
       await t.delete('tariffs');
       await t.execute('INSERT INTO tariffs (id,'+cols.join(',')+') SELECT id,'+cols.join(',')+' FROM tariff_backup');
+      await t.update('tariff_backup_meta', {'available': 0}, where: 'id = 1');
       return true;
     });
   }
