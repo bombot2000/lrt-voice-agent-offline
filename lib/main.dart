@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
+import 'next_cargo_tariff_service.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -31,7 +32,6 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   bool _speechReady = false;
   bool _isListening = false;
   bool _isSpeaking = false;
-  List<FareRecord> _fareRecords = [];
   String _statusText = _defaultStatus;
 
   // Locale id yang dipakai (di Android bisa "id_ID" atau "in_ID").
@@ -146,33 +146,43 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
   void initState() {
     super.initState();
     _initVoice();
-    _loadFareRecords();
-  }
-
-  Future<void> _loadFareRecords() async {
-    final records = await FareDataService.load();
-    if (mounted) setState(() => _fareRecords = records);
   }
 
   Future<void> _openFareManager() async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => const FareManagerPage(),
     ));
-    await _loadFareRecords();
   }
 
-  String? _findImportedFare(String query) {
-    final q = query.toLowerCase();
-    for (final fare in _fareRecords) {
-      if (q.contains(fare.origin.toLowerCase()) &&
-          q.contains(fare.destination.toLowerCase())) {
-        return 'Tarif ${fare.origin} ke ${fare.destination} untuk layanan ${fare.service} adalah Rp ${fare.price}.';
-      }
+  Future<String?> _findImportedFare(String query) async {
+    final matches = await NextCargoTariffService.findDestination(query);
+    if (matches.isEmpty) {
+      final count = await NextCargoTariffService.count();
+      if (count == 0) return null;
+      return 'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk ' + count.toString() + ' tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.';
     }
-    if (_fareRecords.isNotEmpty) {
-      return 'Data tarif tersedia untuk ${_fareRecords.length} rute. Sebutkan stasiun asal dan tujuan sesuai nama pada data tarif.';
+    if (matches.length > 1) {
+      final choices = matches.take(5).map((r) => [r['village'],r['district'],r['city'],r['province']].join(', ')).join('; ');
+      return 'Ada beberapa tujuan yang cocok. Sebutkan kecamatan atau kelurahan lebih lengkap. Contoh: ' + choices + '.';
     }
-    return null;
+    final r=matches.first;
+    String money(Object? value) {
+      final raw=(value??'').toString().trim();
+      if(raw.isEmpty||raw=='0')return 'tidak tersedia';
+      final n=int.tryParse(raw.replaceAll(RegExp(r'[^0-9-]'),''));
+      if(n==null)return raw;
+      final digits=n.abs().toString();
+      final grouped=digits.replaceAllMapped(RegExp(r'(?<=\d)(?=(\d{3})+$)'),(_)=>'.');
+      return 'Rp '+(n<0?'-':'')+grouped;
+    }
+    final destination=[r['village'],r['district'],r['city'],r['province']].join(', ');
+    return 'Tarif NEXT Cargo dari MALANG KOTA ke '+destination+
+      '. Reguler minimum '+(r['min_reg']??'-').toString()+' kg, tarif '+money(r['tarif_reg'])+
+      '. SP1 minimum '+(r['min_sp1']??'-').toString()+' kg, tarif '+money(r['tarif_sp1'])+
+      '. SP2 minimum '+(r['min_sp2']??'-').toString()+' kg, tarif '+money(r['tarif_sp2'])+
+      '. SP3 minimum '+(r['min_sp3']??'-').toString()+' kg, tarif '+money(r['tarif_sp3'])+
+      '. Tarif 10 kg '+money(r['tarif_10kg'])+'; tarif khusus '+money(r['tarif_khusus'])+
+      '. Lead time '+(r['lead_time']??'-').toString()+' hari. Handler '+(r['handler']??'-').toString()+'.';
   }
 
   Future<void> _initVoice() async {
@@ -327,8 +337,8 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     );
   }
 
-  String _matchOfflineAnswer(String query) {
-    final fareQuestion = _findImportedFare(query);
+  Future<String> _matchOfflineAnswer(String query) async {
+    final fareQuestion = await _findImportedFare(query);
     if (fareQuestion != null &&
         (query.toLowerCase().contains('tarif') ||
          query.toLowerCase().contains('harga') ||
@@ -379,7 +389,7 @@ class _LrtOfflineVoiceAgentPageState extends State<LrtOfflineVoiceAgentPage> {
     _lastQuery = query;
     _lastQueryTime = now;
 
-    final reply = _matchOfflineAnswer(query);
+    final reply = await _matchOfflineAnswer(query);
 
     if (!mounted) return;
     setState(() {
