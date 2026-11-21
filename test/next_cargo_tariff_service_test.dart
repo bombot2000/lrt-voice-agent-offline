@@ -16,7 +16,7 @@ void main() {
     expect(result.sampleDestinations.single, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
   });
 
-  test('reads typed XLSX cells and finds tariff sheet after a cover sheet', () {
+  test('reads typed XLSX cells and finds tariff sheet after a cover sheet', () async {
     final workbook = xls.Excel.createExcel();
     final cover = workbook['Cover'];
     cover.cell(xls.CellIndex.indexByString('A1')).value =
@@ -33,7 +33,7 @@ void main() {
     final values = row.split(',');
     for (var i = 0; i < values.length; i++) {
       final value = values[i];
-      final numericColumns = {7, 8, 9, 11, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+      final numericColumns = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
       final cellValue = numericColumns.contains(i)
           ? xls.IntCellValue(int.parse(value))
           : xls.TextCellValue(value);
@@ -44,12 +44,12 @@ void main() {
     }
     final encoded = workbook.save();
     expect(encoded, isNotNull);
-    final result = NextCargoTariffService.preview(
+    final result = await NextCargoTariffService.preview(
       'sample.xlsx',
       Uint8List.fromList(encoded!),
     );
-    expect(result, completion(isA<NextCargoImportPreview>()));
-    return;
+    expect(result.rowCount, 1);
+    expect(result.sampleDestinations.single, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
   });
 
   test('uses exact CSV service minimum when calculating billable weight', () {
