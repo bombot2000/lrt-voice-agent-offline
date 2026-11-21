@@ -209,7 +209,8 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       selectedService = requested;
     }
   } else {
-    selectedService = requested;
+    // Pertanyaan tarif tujuan tanpa berat/layanan memakai Reguler sebagai default.
+    selectedService = requested ?? 'Reguler';
   }
   final lines = <String>[];
   for (final (label, minKey, rateKey) in services) {
@@ -218,8 +219,9 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
     if (selectedService != null && selectedService != label) continue;
     if (weight == null) {
+      final minimumTotal = minimum * rate;
       lines.add(
-          '$label: minimum ${formatPlainNumber(minimum)} kg, tarif ${formatRupiah(rate)}/kg.');
+          '$label: minimum ${formatPlainNumber(minimum)} kg, total tarif minimum ${formatRupiah(minimumTotal)}; setiap kg berikutnya ${formatRupiah(rate)}/kg.');
     } else {
       final billable = billableWeight(weight, minimum);
       lines.add(
