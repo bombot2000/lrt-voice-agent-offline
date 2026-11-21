@@ -1,0 +1,111 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:csv/csv.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart';
+
+const headers = ['Asal Kota','Tj. Propinsi','Tj. Kota','Tj. Kecamatan','Tj. Kelurahan','Handler','Stt Dooring','Lead Time','Tarif 10Kg','Min Reg','Tarif Reg','Min SP1','Tarif SP1','Min SP2','Tarif SP2','Min SP3','Tarif SP3','Tarif Khusus','Motor 100cc','Motor 125cc','Motor 150cc','Motor 250cc','Motor 500cc','Motor 750cc','Sepeda'];
+const cols = ['origin','province','city','district','village','handler','stt_dooring','lead_time','tarif_10kg','min_reg','tarif_reg','min_sp1','tarif_sp1','min_sp2','tarif_sp2','min_sp3','tarif_sp3','tarif_khusus','motor_100cc','motor_125cc','motor_150cc','motor_250cc','motor_500cc','motor_750cc','sepeda'];
+String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+String sqlCols() => cols.map((c) => '$c TEXT').join(', ');
+
+class NextCargoImportPreview {
+  final int rowCount;
+  final List<String> sampleDestinations;
+  const NextCargoImportPreview(this.rowCount, this.sampleDestinations);
+}
+
+class NextCargoTariffService {
+  static Database? _db;
+  static Future<Database> open() async {
+    if (_db != null) return _db!;
+    final root = await getDatabasesPath();
+    _db = await openDatabase(p.join(root, 'next_cargo_tariffs.db'), version: 1,
+      onCreate: (db, version) async {
+        await db.execute('CREATE TABLE tariffs (id INTEGER PRIMARY KEY AUTOINCREMENT, ' + sqlCols() + ', UNIQUE(province,city,district,village))');
+        await db.execute('CREATE TABLE tariff_backup (id INTEGER PRIMARY KEY, ' + sqlCols() + ')');
+        for (final f in ['province','city','district','village']) {
+          await db.execute('CREATE INDEX idx_tariff_' + f + ' ON tariffs(' + f + ')');
+        }
+      });
+    return _db!;
+  }
+  static List<List<dynamic>> decode(Uint8List bytes) => const CsvToListConverter(shouldParseNumbers: false).convert(utf8.decode(bytes,allowMalformed:true).replaceFirst('\uFEFF',''));
+  static int headerAt(List<List<dynamic>> rows) {
+    for (var i=0;i<rows.length;i++) {
+      if (rows[i].isNotEmpty && norm(rows[i][0].toString().trim())=='asalkota') return i;
+    }
+    throw const FormatException('Header Asal Kota tidak ditemukan.');
+  }
+  static Map<String,int> mapHeader(List<dynamic> row) {
+    final found=<String,int>{};
+    for(var i=0;i<row.length;i++) { found[norm(row[i].toString())]=i; }
+    final expected=headers.map(norm).toList();
+    final missing=expected.where((h)=>!found.containsKey(h)).toList();
+    if(missing.isNotEmpty) throw FormatException('Kolom hilang: '+missing.join(', '));
+    return {for(var i=0;i<cols.length;i++) cols[i]:found[expected[i]]!};
+  }
+  static String cell(List<dynamic> row,int i)=>i<row.length?row[i].toString().trim():'';
+  static Future<NextCargoImportPreview> preview(Uint8List bytes) async {
+    final rows=decode(bytes), at=headerAt(rows), map=mapHeader(rows[at]);
+    final keys=<String>{}, samples=<String>[];
+    var count=0;
+    for(var i=at+1;i<rows.length;i++) {
+      final r=rows[i]; if(r.every((v)=>v.toString().trim().isEmpty)) continue;
+      final origin=cell(r,map['origin']!);
+      if(norm(origin)!='malangkota') throw FormatException('Baris '+(i+1).toString()+': asal harus MALANG KOTA.');
+      final p=cell(r,map['province']!), c=cell(r,map['city']!), d=cell(r,map['district']!), v=cell(r,map['village']!);
+      if([p,c,d,v].any((x)=>x.isEmpty)) throw FormatException('Baris '+(i+1).toString()+': data tujuan tidak lengkap.');
+      final key=[p,c,d,v].map(norm).join('|');
+      if(!keys.add(key)) throw FormatException('Tujuan ganda: '+[p,c,d,v].join(' / '));
+      count++; if(samples.length<8) samples.add([v,d,c,p].join(', '));
+    }
+    if(count==0) throw const FormatException('CSV tidak memiliki baris tarif.');
+    return NextCargoImportPreview(count,samples);
+  }
+  static Future<int> importCsv(Uint8List bytes,{required bool replace}) async {
+    final rows=decode(bytes), at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
+    var count=0;
+    await db.transaction((txn) async {
+      await txn.delete('tariff_backup');
+      await txn.execute('INSERT INTO tariff_backup (id,'+cols.join(',')+') SELECT id,'+cols.join(',')+' FROM tariffs');
+      if(replace) await txn.delete('tariffs');
+      var batch=txn.batch(), pending=0;
+      for(var i=at+1;i<rows.length;i++) {
+        final r=rows[i]; if(r.every((v)=>v.toString().trim().isEmpty)) continue;
+        batch.insert('tariffs',{for(final c in cols)c:cell(r,map[c]!)},conflictAlgorithm:ConflictAlgorithm.replace);
+        count++; pending++;
+        if(pending>=400) { await batch.commit(noResult:true); batch=txn.batch(); pending=0; }
+      }
+      if(pending>0) await batch.commit(noResult:true);
+    });
+    return count;
+  }
+  static Future<int> count() async {
+    final db=await open();
+    return Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) AS n FROM tariffs'))??0;
+  }
+  static Future<bool> restore() async {
+    final db=await open();
+    return db.transaction((t) async {
+      final n=Sqflite.firstIntValue(await t.rawQuery('SELECT COUNT(*) AS n FROM tariff_backup'))??0;
+      if(n==0)return false;
+      await t.delete('tariffs');
+      await t.execute('INSERT INTO tariffs (id,'+cols.join(',')+') SELECT id,'+cols.join(',')+' FROM tariff_backup');
+      return true;
+    });
+  }
+  static Future<List<Map<String,Object?>>> findDestination(String query) async {
+    final db=await open();
+    const ignored={'berapa','tarif','ongkir','ongkos','harga','ke','dari','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo'};
+    final tokens=query.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'),' ').split(RegExp(r'\s+')).where((t)=>t.length>=3&&!ignored.contains(t.toLowerCase())).toSet().toList();
+    if(tokens.isEmpty)return [];
+    const fields=['province','city','district','village'];
+    final clauses=<String>[], args=<Object?>[];
+    for(final token in tokens) {
+      clauses.add('('+fields.map((f)=>'$f LIKE ?').join(' OR ')+')');
+      for(var i=0;i<fields.length;i++){args.add('%'+token+'%');}
+    }
+    return db.query('tariffs',columns:cols,where:clauses.join(' AND '),whereArgs:args,limit:8);
+  }
+}
