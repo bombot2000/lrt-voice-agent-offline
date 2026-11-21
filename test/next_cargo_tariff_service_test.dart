@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:excel/excel.dart' as xls;
 import 'package:lrt_voice_agent_offline/next_cargo_tariff_service.dart';
 
 void main() {
@@ -13,6 +14,42 @@ void main() {
     final result = await NextCargoTariffService.preview('sample.csv', bytes('NEXT TARIF 2026-11-21\n\n$header\n$row\n'));
     expect(result.rowCount, 1);
     expect(result.sampleDestinations.single, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
+  });
+
+  test('reads typed XLSX cells and finds tariff sheet after a cover sheet', () {
+    final workbook = xls.Excel.createExcel();
+    final cover = workbook['Cover'];
+    cover.cell(xls.CellIndex.indexByString('A1')).value =
+        xls.TextCellValue('Keterangan tarif');
+    final sheet = workbook['Tarif'];
+    sheet.cell(xls.CellIndex.indexByString('A1')).value =
+        xls.TextCellValue('DATA TARIF NEXT CARGO');
+    for (var i = 0; i < header.split(',').length; i++) {
+      sheet.cell(xls.CellIndex.indexByColumnRow(
+        columnIndex: i,
+        rowIndex: 2,
+      )).value = xls.TextCellValue(header.split(',')[i]);
+    }
+    final values = row.split(',');
+    for (var i = 0; i < values.length; i++) {
+      final value = values[i];
+      final numericColumns = {7, 8, 9, 11, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+      final cellValue = numericColumns.contains(i)
+          ? xls.IntCellValue(int.parse(value))
+          : xls.TextCellValue(value);
+      sheet.cell(xls.CellIndex.indexByColumnRow(
+        columnIndex: i,
+        rowIndex: 3,
+      )).value = cellValue;
+    }
+    final encoded = workbook.save();
+    expect(encoded, isNotNull);
+    final result = NextCargoTariffService.preview(
+      'sample.xlsx',
+      Uint8List.fromList(encoded!),
+    );
+    expect(result, completion(isA<NextCargoImportPreview>()));
+    return;
   });
 
   test('uses exact CSV service minimum when calculating billable weight', () {
