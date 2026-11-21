@@ -66,9 +66,21 @@ void main() {
     );
   });
 
-  test('rejects duplicate destination keys', () async {
-    expect(
-      () => NextCargoTariffService.preview('sample.csv', bytes('$header\n$row\n$row')),
+  test('merges identical duplicate destination aliases', () async {
+    final result = await NextCargoTariffService.preview(
+      'sample.csv',
+      bytes('$header\n$row\n$row'),
+    );
+    expect(result.rowCount, 1);
+  });
+
+  test('rejects duplicate destination when tariff values conflict', () async {
+    const conflictingRow = 'MALANG KOTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,9999,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750';
+    await expectLater(
+      NextCargoTariffService.preview(
+        'sample.csv',
+        bytes('$header\n$row\n$conflictingRow'),
+      ),
       throwsFormatException,
     );
   });
