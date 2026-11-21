@@ -15,6 +15,13 @@ void main() {
     expect(result.sampleDestinations.single, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
   });
 
+  test('uses exact CSV service minimum when calculating billable weight', () {
+    expect(NextCargoTariffService.billableWeight(5, 10), 10);
+    expect(NextCargoTariffService.billableWeight(20, 20), 20);
+    expect(NextCargoTariffService.billableWeight(20, 59), 59);
+    expect(NextCargoTariffService.billableWeight(160, 150), 160);
+  });
+
   test('rejects origin other than MALANG KOTA', () async {
     expect(
       () => NextCargoTariffService.preview('sample.csv', bytes('$header\nJAKARTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,4700,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750')),
