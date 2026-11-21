@@ -18,7 +18,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.38.0'
           cache: true
 
       # Membuat file Android yang belum ada (gradle wrapper, settings, res, dll).
