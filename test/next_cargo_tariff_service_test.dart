@@ -17,21 +17,21 @@ void main() {
 
   test('rejects origin other than MALANG KOTA', () async {
     expect(
-      () => NextCargoTariffService.preview(bytes('$header\nJAKARTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,4700,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750')),
+      () => NextCargoTariffService.preview('sample.csv', bytes('$header\nJAKARTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,4700,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750')),
       throwsFormatException,
     );
   });
 
   test('rejects duplicate destination keys', () async {
     expect(
-      () => NextCargoTariffService.preview(bytes('$header\n$row\n$row')),
+      () => NextCargoTariffService.preview('sample.csv', bytes('$header\n$row\n$row')),
       throwsFormatException,
     );
   });
 
   test('rejects a generic four-column fare CSV', () async {
     expect(
-      () => NextCargoTariffService.preview(bytes('asal,tujuan,layanan,ongkir\nMALANG,SURABAYA,REG,15000')),
+      () => NextCargoTariffService.preview('sample.csv', bytes('asal,tujuan,layanan,ongkir\nMALANG,SURABAYA,REG,15000')),
       throwsFormatException,
     );
   });
