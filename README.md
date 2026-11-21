@@ -6,6 +6,10 @@ Asisten virtual berbasis suara (Speech-to-Text & Text-to-Speech) untuk informasi
 - Tanya lewat suara (bahasa Indonesia), jawaban tampil sebagai teks dan dibacakan.
 - Topik: jam operasional, tarif, pembayaran, transit, rute stasiun.
 - Pengenalan suara on-device (`speech_to_text`) dan TTS (`flutter_tts`).
+- Kelola data tarif/ongkir langsung di aplikasi tanpa build APK ulang.
+- Impor JSON, CSV, dan Excel `.xlsx`, dengan pratinjau dan validasi sebelum diterapkan.
+- Mode gabung/perbarui atau ganti semua, backup otomatis, pemulihan backup, serta ekspor JSON/CSV dan template CSV.
+- Data tarif disimpan lokal agar tetap tersedia secara offline.
 
 ## Persiapan di perangkat (wajib agar benar-benar offline)
 1. Unduh paket bahasa **Indonesia offline** di pengaturan suara Google perangkat.
