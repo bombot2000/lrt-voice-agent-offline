@@ -168,12 +168,16 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     ('SP3', 'min_sp3', 'tarif_sp3'),
   ];
 
+  // Jika pengguna menyebut berat tanpa jenis layanan, gunakan Reguler
+  // sebagai tarif standar. Layanan lain hanya dihitung bila diminta eksplisit.
+  final selectedService = requested ?? (weight != null ? 'Reguler' : null);
+
   final lines = <String>[];
   for (final (label, minKey, rateKey) in services) {
     final minimum = parseTariffNumber(r[minKey]);
     final rate = parseTariffNumber(r[rateKey]);
     if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
-    if (requested != null && requested != label) continue;
+    if (selectedService != null && selectedService != label) continue;
     if (weight == null) {
       lines.add(
           '$label: minimum ${formatPlainNumber(minimum)} kg, tarif ${formatRupiah(rate)}/kg.');
@@ -191,6 +195,11 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   final prefix = weight == null
       ? 'Tarif NEXT Cargo dari MALANG KOTA ke $destination.'
       : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke $destination untuk berat ${formatPlainNumber(weight)} kg (minimum layanan berlaku).';
+
+  // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
+  // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
+  // tarif/kg sehingga tidak dicampurkan ke total.
+  if (weight != null) return [prefix, ...lines].join(' ');
 
   final extras = <String>[];
   final tarif10 = parseTariffNumber(r['tarif_10kg']);
