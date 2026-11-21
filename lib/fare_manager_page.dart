@@ -94,6 +94,13 @@ class FareDataService {
     final p=await SharedPreferences.getInstance(), b=p.getString(backupKey);
     if(b==null) return false; return p.setString(dataKey,b);
   }
+  static Future<void> exportTemplate() async {
+    const csv='asal,tujuan,layanan,ongkir\\nMALANG,SURABAYA,REGULER,15000\\n';
+    await FilePicker.platform.saveFile(
+      fileName:'template_data_ongkir.csv',
+      bytes:Uint8List.fromList([0xEF,0xBB,0xBF,...utf8.encode(csv)]),
+    );
+  }
   static Future<void> export(String ext) async {
     final rows=(await load()).map((e)=>e.toJson()).toList();
     final data=ext=='json'?const JsonEncoder.withIndent('  ').convert(rows):
@@ -146,6 +153,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
           OutlinedButton.icon(onPressed:busy?null:_pick,icon:const Icon(Icons.upload_file),label:const Text('Impor file')),
           OutlinedButton.icon(onPressed:current.isEmpty?null:()=>FareDataService.export('json'),icon:const Icon(Icons.data_object),label:const Text('Ekspor JSON')),
           OutlinedButton.icon(onPressed:current.isEmpty?null:()=>FareDataService.export('csv'),icon:const Icon(Icons.table_view),label:const Text('Ekspor CSV')),
+          OutlinedButton.icon(onPressed:busy?null:FareDataService.exportTemplate,icon:const Icon(Icons.file_download),label:const Text('Template CSV')),
           TextButton.icon(onPressed:_restore,icon:const Icon(Icons.restore),label:const Text('Pulihkan backup')),
         ]),
       ]))),
