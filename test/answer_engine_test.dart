@@ -108,6 +108,24 @@ void main() {
       expect(a, isNot(contains('Lead time')));
     });
 
+    test('layanan SP1 eksplisit memakai minimum SP1 dan hanya menghitung SP1', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
+      expect(a, contains('SP1: berat aktual 30 kg, berat tagihan 200 kg'));
+      expect(a, contains('Rp 900.000')); // minimum 200 kg x Rp 4.500
+      expect(a, isNot(contains('Reguler')));
+      expect(a, isNot(contains('SP3')));
+    });
+
+    test('layanan SP3 eksplisit memakai minimum SP3 dan hanya menghitung SP3', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 30 kg SP3');
+      expect(a, contains('SP3: berat aktual 30 kg, berat tagihan 1000 kg'));
+      expect(a, contains('Rp 4.000.000')); // minimum 1000 kg x Rp 4.000
+      expect(a, isNot(contains('Reguler')));
+      expect(a, isNot(contains('SP1')));
+    });
+
     test('berat di bawah minimum memakai berat minimum layanan', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 10 kg');
