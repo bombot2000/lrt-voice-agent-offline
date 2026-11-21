@@ -10,7 +10,7 @@ void main() {
   Uint8List bytes(String text) => Uint8List.fromList(utf8.encode(text));
 
   test('detects header after title and blank row, retaining NEXT Cargo structure', () async {
-    final result = await NextCargoTariffService.preview(bytes('NEXT TARIF 2026-11-21\n\n$header\n$row\n'));
+    final result = await NextCargoTariffService.preview('sample.csv', bytes('NEXT TARIF 2026-11-21\n\n$header\n$row\n'));
     expect(result.rowCount, 1);
     expect(result.sampleDestinations.single, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
   });
