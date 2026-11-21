@@ -95,7 +95,7 @@ class FareDataService {
     if(b==null) return false; return p.setString(dataKey,b);
   }
   static Future<void> exportTemplate() async {
-    const csv='asal,tujuan,layanan,ongkir\\nMALANG,SURABAYA,REGULER,15000\\n';
+    const csv='asal,tujuan,layanan,ongkir\nMALANG,SURABAYA,REGULER,15000\n';
     await FilePicker.platform.saveFile(
       fileName:'template_data_ongkir.csv',
       bytes:Uint8List.fromList([0xEF,0xBB,0xBF,...utf8.encode(csv)]),
