@@ -19,7 +19,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       if(f==null)return; final file=f.files.single; final data=file.bytes;
       if(data==null)throw Exception('File tidak dapat dibaca.');
       setState(()=>busy=true); final p=await NextCargoTariffService.preview(data);
-      if(mounted)setState(()=>{filename=file.name,bytes=data,preview=p});
+      if(mounted)setState(() { filename=file.name; bytes=data; preview=p; });
     }catch(e){msg('CSV tidak valid: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> apply() async {
@@ -29,7 +29,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       content:Text(replace?'Data aktif diganti dengan '+preview!.rowCount.toString()+' tujuan. Backup otomatis dibuat.':'Tujuan sama diperbarui dan tujuan lain dipertahankan. Backup otomatis dibuat.'),
       actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Lanjutkan'))]));
     if(yes!=true)return;setState(()=>busy=true);
-    try{final n=await NextCargoTariffService.importCsv(data,replace:replace);await reload();if(!mounted)return;setState(()=>{filename=null,bytes=null,preview=null});msg(n.toString()+' baris tersimpan offline.');}
+    try{final n=await NextCargoTariffService.importCsv(data,replace:replace);await reload();if(!mounted)return;setState(() { filename=null; bytes=null; preview=null; });msg(n.toString()+' baris tersimpan offline.');}
     catch(e){msg('Impor gagal: '+e.toString(),true);}finally{if(mounted)setState(()=>busy=false);}
   }
   Future<void> restore() async {
@@ -53,7 +53,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
         SegmentedButton<bool>(segments:const [ButtonSegment(value:true,label:Text('Ganti semua')),ButtonSegment(value:false,label:Text('Gabungkan'))],selected:{replace},onSelectionChanged:(v)=>setState(()=>replace=v.first)),
         ...preview!.sampleDestinations.map((s)=>ListTile(dense:true,leading:const Icon(Icons.location_on_outlined),title:Text(s))),
         FilledButton.icon(onPressed:busy?null:apply,icon:const Icon(Icons.check_circle),label:const Text('Terapkan tarif')),
-        TextButton(onPressed:busy?null:()=>setState(()=>{preview=null,bytes=null,filename=null}),child:const Text('Batalkan')),
+        TextButton(onPressed:busy?null:()=>setState(() { preview=null; bytes=null; filename=null; }),child:const Text('Batalkan')),
       ],
       if(busy)const Padding(padding:EdgeInsets.all(24),child:Center(child:CircularProgressIndicator())),
       const Text('Header NEXT Cargo dideteksi otomatis walau file memiliki baris judul di atas header.'),
