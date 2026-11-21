@@ -200,9 +200,10 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
           '$requested belum berlaku karena minimum ${formatPlainNumber(requestedMinimum)} kg; digunakan layanan dengan minimum yang sudah terpenuhi.';
     }
 
-    if (requested != null && requestedMinimum != null && requestedMinimum <= weight) {
-      selectedService = requested;
-    } else if (eligible.isNotEmpty) {
+    // Berat aktual menentukan satu kelompok tertinggi yang sudah memenuhi
+    // minimum. Penyebutan layanan di pertanyaan tidak boleh memaksa tarif
+    // kelompok yang lebih rendah jika kelompok lebih tinggi juga sudah layak.
+    if (eligible.isNotEmpty) {
       selectedService = eligible.first.label;
     } else if (requested != null) {
       selectedService = requested;
