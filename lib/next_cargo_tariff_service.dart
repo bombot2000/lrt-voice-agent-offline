@@ -107,6 +107,10 @@ class NextCargoTariffService {
     });
     return count;
   }
+  /// Berat yang ditagihkan mengikuti minimum layanan pada baris tujuan CSV.
+  static num billableWeight(num actualWeight, num serviceMinimum) =>
+      actualWeight > serviceMinimum ? actualWeight : serviceMinimum;
+
   static Future<int> count() async {
     final db=await open();
     return Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) AS n FROM tariffs'))??0;
