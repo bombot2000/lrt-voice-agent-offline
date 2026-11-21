@@ -206,8 +206,10 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     // kelompok yang lebih rendah jika kelompok lebih tinggi juga sudah layak.
     if (eligible.isNotEmpty) {
       selectedService = eligible.first.label;
-    } else if (requested != null) {
-      selectedService = requested;
+    } else {
+      // Jika berat masih di bawah minimum semua layanan, gunakan Reguler
+      // dengan berat tagihan minimum Reguler, bukan menampilkan semua tier.
+      selectedService = requested ?? 'Reguler';
     }
   } else {
     // Pertanyaan tarif tujuan tanpa berat/layanan memakai Reguler sebagai default.
