@@ -89,6 +89,9 @@ class NextCargoTariffService {
     return NextCargoImportPreview(count,samples);
   }
   static Future<int> importFile(String name, Uint8List bytes,{required bool replace}) async {
+    // Validasi ulang di lapisan service agar impor tidak bisa melewati preview UI.
+    // Semua pemeriksaan selesai sebelum transaksi dan backup database dimulai.
+    await preview(name, bytes);
     final rows=decode(name,bytes), at=headerAt(rows), map=mapHeader(rows[at]), db=await open();
     var count=0;
     await db.transaction((txn) async {
@@ -128,7 +131,7 @@ class NextCargoTariffService {
   }
   static Future<List<Map<String,Object?>>> findDestination(String query) async {
     final db=await open();
-    const ignored={'tarif','ongkir','ongkos','harga','biaya','ke','dari','tujuan','menuju','pengiriman','kirim','paket','barang','berapa','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo'};
+    const ignored={'tarif','ongkir','ongkos','harga','biaya','ke','dari','tujuan','menuju','pengiriman','kirim','paket','barang','berapa','malang','kota','kabupaten','provinsi','propinsi','kecamatan','kelurahan','desa','reg','reguler','sp1','sp2','sp3','next','cargo','tolong','mohon','coba','cek','carikan','cari','info','informasi','hitung','hitungkan','kalkulasi','estimasi','berapa','untuk','dengan','berat','kg','kilo','kilogram','saya','minta','dong'};
     final tokens=query.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'),' ').split(RegExp(r'\s+')).where((t)=>t.length>=3&&!RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(t)&&!ignored.contains(t.toLowerCase())).toSet().toList();
     if(tokens.isEmpty)return [];
     const fields=['province','city','district','village'];
