@@ -151,6 +151,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       weightMatch == null ? null : parseTariffNumber(weightMatch.group(1));
 
   final lower = query.toLowerCase();
+  final wantsSpecial = RegExp(r'\\btarif\\s+khusus\\b|\\bkhusus\\b').hasMatch(lower);
   final requested = lower.contains('sp3')
       ? 'SP3'
       : lower.contains('sp2')
@@ -185,7 +186,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
         .toList()
       ..sort((a, b) => b.minimum!.compareTo(a.minimum!));
 
-    double? requestedMinimum;
+    num? requestedMinimum;
     if (requested != null) {
       for (final service in services) {
         if (service.$1 == requested) {
@@ -212,6 +213,23 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     // Pertanyaan tarif tujuan tanpa berat/layanan memakai Reguler sebagai default.
     selectedService = requested ?? 'Reguler';
   }
+  // Tarif khusus memakai kolom tarif_khusus, tetapi batas berat tagihnya
+  // tetap mengikuti min_reg. Tarif khusus tidak masuk jenjang SP.
+  final specialRate = parseTariffNumber(r['tarif_khusus']);
+  final regularMinimum = parseTariffNumber(r['min_reg']);
+  if (wantsSpecial && specialRate != null && specialRate > 0 &&
+      regularMinimum != null && regularMinimum > 0) {
+    final prefix = weight == null
+        ? 'Tarif NEXT Cargo dari MALANG KOTA ke $destination.'
+        : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke $destination untuk berat ${formatPlainNumber(weight)} kg.';
+    final billable = weight == null ? regularMinimum : billableWeight(weight, regularMinimum);
+    final line = 'Tarif khusus: minimum Reguler ${formatPlainNumber(regularMinimum)} kg, berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(specialRate)}/kg = ${formatRupiah(billable * specialRate)}.';
+    return '$prefix $line';
+  }
+  if (wantsSpecial && (specialRate == null || specialRate <= 0)) {
+    return 'Tarif khusus tidak tersedia untuk tujuan $destination.';
+  }
+
   final lines = <String>[];
   for (final (label, minKey, rateKey) in services) {
     final minimum = parseTariffNumber(r[minKey]);
