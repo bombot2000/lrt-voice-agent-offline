@@ -61,3 +61,30 @@ String formatRupiah(num value) {
 /// Berat yang ditagihkan mengikuti minimum layanan pada baris tujuan.
 num billableWeight(num actualWeight, num serviceMinimum) =>
     actualWeight > serviceMinimum ? actualWeight : serviceMinimum;
+
+/// Jumlah maksimum tujuan yang dikembalikan pencarian.
+const int kMaxTariffMatches = 8;
+
+const Set<String> _ignoredWords = {
+  'tarif', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'tujuan',
+  'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang', 'kota',
+  'kabupaten', 'provinsi', 'propinsi', 'kecamatan', 'kelurahan', 'desa',
+  'reg', 'reguler', 'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon',
+  'coba', 'cek', 'carikan', 'cari', 'info', 'informasi', 'hitung', 'hitungkan',
+  'kalkulasi', 'estimasi', 'berapa', 'untuk', 'dengan', 'berat', 'kg', 'kilo',
+  'kilogram', 'saya', 'minta', 'dong', 'halo', 'hai', 'selamat', 'pagi',
+  'siang', 'sore', 'malam',
+};
+
+/// Kata penting nama tujuan dari kalimat pertanyaan (huruf besar, tanpa
+/// kata perintah, angka, dan kata pendek).
+List<String> destinationTokens(String query) => query
+    .toUpperCase()
+    .replaceAll(RegExp(r'[^A-Z0-9 ]'), ' ')
+    .split(RegExp(r'\s+'))
+    .where((t) =>
+        t.length >= 3 &&
+        !RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(t) &&
+        !_ignoredWords.contains(t.toLowerCase()))
+    .toSet()
+    .toList();

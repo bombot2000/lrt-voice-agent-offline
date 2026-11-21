@@ -4,6 +4,8 @@ Asisten suara (Speech-to-Text & Text-to-Speech) untuk menghitung ongkir **NEXT C
 
 ## Fitur
 - Tanya lewat suara (bahasa Indonesia), misalnya "ongkir ke Abiansemal Badung 20 kilo reguler". Jawaban tampil sebagai teks dan dibacakan.
+- Bisa juga **mengetik** pertanyaan di kolom teks (jawaban hasil ketikan tidak dibacakan).
+- **Dialog bertahap:** bila tujuan ambigu, aplikasi menampilkan pilihan yang bisa diketuk. Cukup sebut kelurahan/kecamatan berikutnya ("Sibang"), berat dan layanan dari pertanyaan awal tetap dipakai.
 - Perhitungan per layanan (Reguler, SP1, SP2, SP3) dengan berat tagihan mengikuti minimum layanan tujuan.
 - Kelola data tarif langsung di aplikasi tanpa build APK ulang.
 - Impor JSON, CSV (pemisah koma, titik koma, atau tab), dan Excel `.xlsx`, dengan pratinjau dan validasi sebelum diterapkan. File dibaca di isolate terpisah sehingga UI tidak membeku.
@@ -37,9 +39,3 @@ flutter build apk --release
 ## Catatan
 - Package name masih `com.example.cargo_voice_agent_offline` dan rilis ditandatangani dengan kunci debug. Ganti keduanya sebelum rilis ke Play Store.
 - Folder `ios/` hanya berisi `Info.plist`. Jalankan `flutter create --platforms=ios .` bila ingin membangun untuk iOS.
-
-## Kompatibilitas pembaruan Android
-
-Build ini mempertahankan `applicationId` lama `com.example.lrt_voice_agent_offline` agar identitas paket tetap sama dengan aplikasi LRT yang sudah terpasang. Nama proyek, label aplikasi, dan namespace Android tetap menggunakan Cargo Voice Agent. `versionCode` dinaikkan menjadi 54.
-
-**Penting tentang tanda tangan APK:** agar Android mengizinkan pembaruan tanpa uninstall, APK baru wajib ditandatangani dengan sertifikat/keystore yang sama persis dengan APK yang terpasang. Workflow debug signing di GitHub Actions tidak menjamin kunci yang sama antar-run. Jangan memasang APK hasil build baru sebagai pembaruan sebelum sidik jari sertifikatnya cocok dengan APK terpasang. Jangan uninstall aplikasi karena dapat menghilangkan database lokal.

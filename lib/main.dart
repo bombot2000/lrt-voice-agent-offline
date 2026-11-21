@@ -23,13 +23,20 @@ class CargoVoiceAgentPage extends StatefulWidget {
 
 class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   static const String _defaultStatus =
-      'Mode Offline • Tekan mikrofon untuk bertanya';
+      'Mode Offline • Tekan mikrofon atau ketik pertanyaan';
   static const String _listeningStatus = 'Mendengarkan...';
 
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
   final ScrollController _scrollController = ScrollController();
-  final AnswerEngine _engine = const AnswerEngine(SqliteTariffLookup());
+  final AnswerEngine _engine = AnswerEngine(const SqliteTariffLookup());
+  final TextEditingController _textController = TextEditingController();
+
+  // Pilihan tujuan yang bisa diketuk saat hasil pencarian ambigu.
+  List<Choice> _choices = const [];
+
+  // Jawaban dibacakan hanya bila pertanyaan terakhir datang lewat suara.
+  bool _voiceMode = true;
 
   bool _speechReady = false;
   bool _isListening = false;
@@ -209,13 +216,13 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
               : result.recognizedWords;
         });
         if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-          _handleOfflineQuery(result.recognizedWords.trim());
+          _handleQuery(result.recognizedWords.trim(), speak: true);
         }
       },
     );
   }
 
-  Future<void> _handleOfflineQuery(String query) async {
+  Future<void> _handleQuery(String query, {required bool speak}) async {
     // Abaikan hasil final ganda yang identik dalam waktu singkat.
     final now = DateTime.now();
     if (query == _lastQuery &&
@@ -224,19 +231,46 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     }
     _lastQuery = query;
     _lastQueryTime = now;
+    _voiceMode = speak;
 
-    final reply = await _engine.answer(query);
-
+    final reply = await _engine.ask(query);
     if (!mounted) return;
+    _showReply(query, reply);
+  }
+
+  Future<void> _handleChoice(Choice choice) async {
+    if (_isSpeaking) await _tts.stop();
+    final reply = _engine.select(choice);
+    if (!mounted) return;
+    _showReply(choice.label, reply);
+  }
+
+  Future<void> _submitText(String raw) async {
+    final query = raw.trim();
+    if (query.isEmpty) return;
+    _textController.clear();
+    if (_isSpeaking) await _tts.stop();
+    if (_isListening) {
+      await _speech.cancel();
+      if (mounted) setState(() => _isListening = false);
+    }
+    await _handleQuery(query, speak: false);
+  }
+
+  void _showReply(String userText, Reply reply) {
     setState(() {
-      _messages.add({'role': 'user', 'text': query});
-      _messages.add({'role': 'agent', 'text': reply});
+      _messages.add({'role': 'user', 'text': userText});
+      _messages.add({'role': 'agent', 'text': reply.text});
+      _choices = reply.choices;
       _statusText = _defaultStatus;
     });
     _scrollToBottom();
+    if (_voiceMode) _speak(reply.text);
+  }
 
+  Future<void> _speak(String text) async {
     try {
-      await _tts.speak(reply);
+      await _tts.speak(text);
     } catch (_) {
       // Jawaban tetap tampil sebagai teks.
     }
@@ -258,6 +292,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     _speech.cancel();
     _tts.stop();
     _scrollController.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
@@ -323,7 +358,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -344,37 +379,96 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                           _isListening ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: _toggleListening,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      width: _isListening ? 76 : 64,
-                      height: _isListening ? 76 : 64,
-                      decoration: BoxDecoration(
-                        color: _isListening
-                            ? Colors.redAccent
-                            : (_isSpeaking
-                                ? Colors.orange
-                                : const Color(0xFFD32F2F)),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                const Color(0xFFD32F2F).withValues(alpha: 0.28),
-                            blurRadius: _isListening ? 18 : 8,
-                            spreadRadius: _isListening ? 4 : 1,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        _isListening
-                            ? Icons.stop
-                            : (_isSpeaking ? Icons.volume_up : Icons.mic),
-                        color: Colors.white,
-                        size: 32,
+                  if (_choices.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 150),
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final c in _choices)
+                              ActionChip(
+                                label: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width -
+                                              96),
+                                  child: Text(c.label,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                onPressed: () => _handleChoice(c),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _textController,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: _submitText,
+                          decoration: InputDecoration(
+                            hintText: 'Ketik tujuan dan berat...',
+                            isDense: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            suffixIcon: IconButton(
+                              tooltip: 'Kirim',
+                              icon: const Icon(Icons.send),
+                              onPressed: () =>
+                                  _submitText(_textController.text),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 76,
+                        height: 76,
+                        child: Center(
+                          child: GestureDetector(
+                            onTap: _toggleListening,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              width: _isListening ? 72 : 60,
+                              height: _isListening ? 72 : 60,
+                              decoration: BoxDecoration(
+                                color: _isListening
+                                    ? Colors.redAccent
+                                    : (_isSpeaking
+                                        ? Colors.orange
+                                        : const Color(0xFFD32F2F)),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFD32F2F)
+                                        .withValues(alpha: 0.28),
+                                    blurRadius: _isListening ? 18 : 8,
+                                    spreadRadius: _isListening ? 4 : 1,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _isListening
+                                    ? Icons.stop
+                                    : (_isSpeaking
+                                        ? Icons.volume_up
+                                        : Icons.mic),
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

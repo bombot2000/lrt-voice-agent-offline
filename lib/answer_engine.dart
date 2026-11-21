@@ -27,41 +27,112 @@ String normalizeQuery(String query) => query
     .replaceAll(RegExp(r'\s+'), ' ')
     .trim();
 
-/// Menentukan jawaban untuk satu pertanyaan ongkir.
+/// Satu pilihan tujuan yang bisa diketuk saat hasil pencarian ambigu.
+class Choice {
+  final String label;
+  final Map<String, Object?> row;
+  const Choice(this.label, this.row);
+}
+
+/// Jawaban mesin: teks (untuk ditampilkan dan dibacakan) dan pilihan tujuan.
+class Reply {
+  final String text;
+  final List<Choice> choices;
+  const Reply(this.text, [this.choices = const []]);
+}
+
+/// Menentukan jawaban untuk satu pertanyaan ongkir, dengan ingatan dialog:
+/// bila tujuan ambigu, jawaban berikutnya (ucapan, ketikan, atau ketukan
+/// pilihan) mempersempit kandidat tanpa perlu mengulang seluruh kalimat.
 class AnswerEngine {
   final TariffLookup tariffs;
+  String _pendingQuery = '';
+  List<Map<String, Object?>> _pending = const [];
 
-  const AnswerEngine(this.tariffs);
+  AnswerEngine(this.tariffs);
 
-  Future<String> answer(String query) async {
+  bool get hasPendingChoice => _pending.isNotEmpty;
+
+  void reset() {
+    _pendingQuery = '';
+    _pending = const [];
+  }
+
+  /// Versi sederhana yang hanya mengembalikan teks.
+  Future<String> answer(String query) async => (await ask(query)).text;
+
+  /// Jawaban setelah pengguna mengetuk salah satu pilihan.
+  Reply select(Choice choice) {
+    final query = _pendingQuery;
+    reset();
+    return Reply(buildFareAnswer(query, choice.row));
+  }
+
+  Future<Reply> ask(String query) async {
+    if (_pending.isNotEmpty) {
+      final followUp = _narrow(query);
+      if (followUp != null) return followUp;
+      reset(); // Bukan jawaban atas pertanyaan sebelumnya: mulai baru.
+    }
+
     final normalized = normalizeQuery(query);
     final words = normalized.split(' ').where((w) => w.isNotEmpty).toSet();
-
     final cargo = words.any(_cargoWords.contains) ||
         RegExp(r'\d\s*(kg|kilo|kilogram)\b').hasMatch(normalized);
     final greeting =
         words.any(_greetingWords.contains) || normalized.contains('bisa apa');
-    if (greeting && !cargo) return _helpAnswer;
+    if (greeting && !cargo) return const Reply(_helpAnswer);
 
     List<Map<String, Object?>> matches;
     try {
       matches = await tariffs.find(query);
     } catch (_) {
-      return 'Data tarif tidak dapat dibaca. Coba lagi, atau impor ulang lewat menu Kelola Data Ongkir.';
+      return const Reply(
+          'Data tarif tidak dapat dibaca. Coba lagi, atau impor ulang lewat menu Kelola Data Ongkir.');
     }
 
     if (matches.isEmpty) {
       final total = await tariffs.count();
       if (total == 0) {
-        return 'Data tarif kargo belum diimpor. Buka menu Kelola Data Ongkir untuk memasukkan file tarif terbaru.';
+        return const Reply(
+            'Data tarif kargo belum diimpor. Buka menu Kelola Data Ongkir untuk memasukkan file tarif terbaru.');
       }
-      return 'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $total tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.';
+      return Reply(
+          'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $total tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.');
     }
-    if (matches.length > 1) {
-      final choices = matches.take(5).map(_destinationOf).join('; ');
-      return 'Ada beberapa tujuan yang cocok. Sebutkan kecamatan atau kelurahan lebih lengkap. Contoh: $choices.';
+    if (matches.length > 1) return _ambiguous(matches, query);
+    return Reply(buildFareAnswer(query, matches.first));
+  }
+
+  /// Mempersempit kandidat dengan kata baru. Null bila kata baru tidak cocok
+  /// dengan satu pun kandidat (berarti ini pertanyaan baru).
+  Reply? _narrow(String query) {
+    final tokens = destinationTokens(query);
+    if (tokens.isEmpty) return null;
+    final narrowed = _pending.where((r) {
+      final text = _destinationOf(r).toUpperCase();
+      return tokens.every(text.contains);
+    }).toList();
+    if (narrowed.isEmpty) return null;
+
+    final combined = '$_pendingQuery $query';
+    if (narrowed.length == 1) {
+      reset();
+      return Reply(buildFareAnswer(combined, narrowed.first));
     }
-    return buildFareAnswer(query, matches.first);
+    return _ambiguous(narrowed, combined);
+  }
+
+  Reply _ambiguous(List<Map<String, Object?>> rows, String query) {
+    _pendingQuery = query;
+    _pending = rows;
+    final count = rows.length >= kMaxTariffMatches
+        ? 'Ada banyak tujuan'
+        : 'Ada ${rows.length} tujuan';
+    return Reply(
+      '$count yang cocok. Pilih salah satu di layar, atau sebutkan kecamatan atau kelurahan lebih lengkap.',
+      [for (final r in rows.take(6)) Choice(_destinationOf(r), r)],
+    );
   }
 }
 

@@ -37,4 +37,10 @@ void main() {
     expect(formatRupiah(117500), 'Rp 117.500');
     expect(formatRupiah(0), 'Rp 0');
   });
+
+  test('destinationTokens membuang kata perintah, angka, dan kata pendek', () {
+    expect(destinationTokens('Tolong ongkir ke Abiansemal Badung 20 kilo reguler'),
+        equals(['ABIANSEMAL', 'BADUNG']));
+    expect(destinationTokens('selamat pagi'), equals(<String>[]));
+  });
 }

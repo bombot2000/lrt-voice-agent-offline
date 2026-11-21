@@ -394,26 +394,7 @@ class NextCargoTariffService {
   static Future<List<Map<String, Object?>>> findDestination(
       String query) async {
     final db = await open();
-    const ignored = {
-      'tarif', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'tujuan',
-      'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang', 'kota',
-      'kabupaten', 'provinsi', 'propinsi', 'kecamatan', 'kelurahan', 'desa',
-      'reg', 'reguler', 'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong',
-      'mohon', 'coba', 'cek', 'carikan', 'cari', 'info', 'informasi', 'hitung',
-      'hitungkan', 'kalkulasi', 'estimasi', 'berapa', 'untuk', 'dengan',
-      'berat', 'kg', 'kilo', 'kilogram', 'saya', 'minta', 'dong', 'halo', 'hai',
-      'selamat', 'pagi', 'siang', 'sore', 'malam',
-    };
-    final tokens = query
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9 ]'), ' ')
-        .split(RegExp(r'\s+'))
-        .where((t) =>
-            t.length >= 3 &&
-            !RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(t) &&
-            !ignored.contains(t.toLowerCase()))
-        .toSet()
-        .toList();
+    final tokens = util.destinationTokens(query);
     if (tokens.isEmpty) return [];
     final clauses = <String>[], args = <Object?>[];
     for (final token in tokens) {
@@ -423,7 +404,10 @@ class NextCargoTariffService {
       }
     }
     return db.query('tariffs',
-        columns: cols, where: clauses.join(' AND '), whereArgs: args, limit: 8);
+        columns: cols,
+        where: clauses.join(' AND '),
+        whereArgs: args,
+        limit: util.kMaxTariffMatches);
   }
 }
 

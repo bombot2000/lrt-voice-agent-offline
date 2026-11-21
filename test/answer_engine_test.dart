@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cargo_voice_agent_offline/answer_engine.dart';
+import 'package:cargo_voice_agent_offline/tariff_utils.dart';
 
 class FakeLookup implements TariffLookup {
   final List<Map<String, Object?>> rows;
@@ -7,15 +8,33 @@ class FakeLookup implements TariffLookup {
   final bool failOnFind;
   FakeLookup({this.rows = const [], this.total = 0, this.failOnFind = false});
 
+  // Meniru pencarian SQLite: semua kata tujuan harus ada di alamat.
   @override
   Future<List<Map<String, Object?>>> find(String query) async {
     if (failOnFind) throw StateError('db error');
-    return rows;
+    final tokens = destinationTokens(query);
+    if (tokens.isEmpty) return [];
+    return rows.where((r) {
+      final text =
+          [r['province'], r['city'], r['district'], r['village']].join(' ');
+      return tokens.every(text.contains);
+    }).toList();
   }
 
   @override
   Future<int> count() async => total;
 }
+
+const sibang = <String, Object?>{
+  'province': 'BALI',
+  'city': 'BADUNG',
+  'district': 'ABIANSEMAL',
+  'village': 'SIBANG KAJA',
+  'handler': 'DENPASAR AGEN',
+  'lead_time': '7',
+  'min_reg': '25',
+  'tarif_reg': '5200',
+};
 
 const abiansemal = <String, Object?>{
   'province': 'BALI',
@@ -75,7 +94,7 @@ void main() {
       final engine =
           AnswerEngine(FakeLookup(rows: [abiansemal, abiansemal], total: 2));
       expect(await engine.answer('ongkir ke Abiansemal'),
-          contains('beberapa tujuan'));
+          contains('2 tujuan yang cocok'));
     });
 
     test('tujuan tidak ditemukan menyebut jumlah tujuan tersedia', () async {
@@ -102,6 +121,57 @@ void main() {
       final engine = AnswerEngine(FakeLookup(failOnFind: true));
       expect(await engine.answer('ongkir ke Abiansemal'),
           contains('tidak dapat dibaca'));
+    });
+  });
+
+  group('dialog bertahap', () {
+    final rows = [abiansemal, sibang];
+
+    test('hasil ambigu memberi pilihan yang bisa diketuk', () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
+      expect(r.text, contains('2 tujuan yang cocok'));
+      expect(r.choices.length, 2);
+      expect(r.choices.first.label, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
+      expect(engine.hasPendingChoice, true);
+    });
+
+    test('mengetuk pilihan memakai berat dari pertanyaan awal', () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
+      final answer = engine.select(r.choices.last);
+      expect(answer.text, contains('SIBANG KAJA'));
+      expect(answer.text, contains('berat aktual 20 kg'));
+      expect(answer.text, contains('Rp 130.000')); // 25 kg x 5.200
+      expect(engine.hasPendingChoice, false);
+    });
+
+    test('menyebut kelurahan saja sudah cukup, berat tidak perlu diulang',
+        () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      await engine.ask('ongkir ke Abiansemal 20 kilo');
+      final r = await engine.ask('Sibang');
+      expect(r.text, contains('SIBANG KAJA'));
+      expect(r.text, contains('berat aktual 20 kg'));
+      expect(r.choices, isEmpty);
+      expect(engine.hasPendingChoice, false);
+    });
+
+    test('jawaban yang tidak cocok kandidat dianggap pertanyaan baru',
+        () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      await engine.ask('ongkir ke Abiansemal');
+      final r = await engine.ask('ongkir ke Atlantis');
+      expect(r.text, contains('tersedia untuk 2 tujuan'));
+      expect(engine.hasPendingChoice, false);
+    });
+
+    test('jawaban yang masih ambigu mempertahankan dialog', () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      await engine.ask('ongkir ke Bali');
+      final r = await engine.ask('Badung');
+      expect(r.text, contains('2 tujuan yang cocok'));
+      expect(engine.hasPendingChoice, true);
     });
   });
 }
