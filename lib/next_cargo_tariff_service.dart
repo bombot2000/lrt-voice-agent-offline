@@ -36,7 +36,7 @@ class NextCargoTariffService {
   static List<List<dynamic>> decode(String name, Uint8List bytes) {
     final lower=name.toLowerCase();
     if(lower.endsWith('.csv')) {
-      return const CsvToListConverter(shouldParseNumbers:false, eol:'\\n').convert(
+      return const CsvToListConverter(shouldParseNumbers:false, eol:'\n').convert(
         utf8.decode(bytes,allowMalformed:true).replaceFirst('\uFEFF',''));
     }
     if(lower.endsWith('.xlsx')) {
