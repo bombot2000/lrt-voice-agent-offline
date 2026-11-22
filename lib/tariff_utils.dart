@@ -247,3 +247,24 @@ int _editDistance(String a, String b) {
   }
   return previous[b.length];
 }
+
+
+/// Merapikan jawaban untuk tampilan chat saat pengguna mengetik.
+/// Kalimat pembuka dipisahkan, sedangkan rincian ditampilkan sebagai poin.
+String formatTypedReply(String text) {
+  final normalized = text.replaceAll(RegExp(r'\\s+'), ' ').trim();
+  if (normalized.isEmpty) return normalized;
+
+  final sentences = normalized
+      .split(RegExp(r'(?<=[.!?])\\s+(?=[A-Z0-9])'))
+      .where((part) => part.trim().isNotEmpty)
+      .map((part) => part.trim())
+      .toList();
+
+  if (sentences.length < 2) return normalized;
+  return [
+    sentences.first,
+    '',
+    for (final detail in sentences.skip(1)) '• $detail',
+  ].join('\\n');
+}
