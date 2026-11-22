@@ -51,7 +51,6 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   String _lastQuery = '';
   DateTime _lastQueryTime = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void> _queryQueue = Future<void>.value();
-  int _queryRevision = 0;
 
   final List<Map<String, String>> _messages = [
     {
@@ -235,21 +234,42 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     _lastQuery = query;
     _lastQueryTime = now;
     _voiceMode = speak;
-    final revision = ++_queryRevision;
-    // Serialisasi query agar hasil STT dan ketikan tidak mengubah state dialog bersamaan.
-    _queryQueue = _queryQueue.then((_) async {
-      final reply = await _engine.ask(query);
-      if (!mounted || revision != _queryRevision) return;
-      _showReply(query, reply, speak: speak);
+    // Semua input (suara, ketikan, dan pilihan) diproses berurutan.
+    // Error satu query tidak boleh merusak antrean untuk query berikutnya.
+    _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
+      try {
+        final reply = await _engine.ask(query);
+        if (!mounted) return;
+        _showReply(query, reply, speak: speak);
+      } catch (_) {
+        if (!mounted) return;
+        _showReply(
+          query,
+          const Reply('Terjadi kesalahan saat membaca data tarif. Silakan coba lagi.'),
+          speak: false,
+        );
+      }
     });
     await _queryQueue;
   }
 
   Future<void> _handleChoice(Choice choice) async {
     if (_isSpeaking) await _tts.stop();
-    final reply = _engine.select(choice);
-    if (!mounted) return;
-    _showReply(choice.label, reply, speak: _voiceMode);
+    _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
+      try {
+        final reply = _engine.select(choice);
+        if (!mounted) return;
+        _showReply(choice.label, reply, speak: _voiceMode);
+      } catch (_) {
+        if (!mounted) return;
+        _showReply(
+          choice.label,
+          const Reply('Pilihan tujuan gagal diproses. Silakan ulangi pertanyaan.'),
+          speak: false,
+        );
+      }
+    });
+    await _queryQueue;
   }
 
   Future<void> _submitText(String raw) async {
