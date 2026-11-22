@@ -31,6 +31,11 @@ void main() {
     });
   });
 
+  test('spokenVersion preserves sentence punctuation and words containing kg', () {
+    expect(spokenVersion('Tarif khusus Rp 3.400. Tarif Pakgading tersedia.'),
+        'Tarif khusus tiga ribu empat ratus rupiah. Tarif Pakgading tersedia.');
+  });
+
   test('spokenVersion reads rupiah and tariff operators naturally', () {
     expect(spokenVersion('Rp 117.500 × Rp 4.700/kg'),
         'seratus tujuh belas ribu lima ratus rupiah kali empat ribu tujuh ratus rupiah per kilogram');
@@ -51,8 +56,9 @@ void main() {
     expect(destinationTokens('Tolong ongkir ke Abiansemal Badung 20 kilo reguler'),
         equals(['ABIANSEMAL', 'BADUNG']));
     expect(destinationTokens('selamat pagi'), equals(<String>[]));
-    expect(destinationTokens('Kabupaten Blitar'), ['KABUPATEN', 'BLITAR']);
-    expect(destinationTokens('Kota Blitar'), ['KOTA', 'BLITAR']);
+    expect(destinationTokens('Kabupaten Blitar'), ['BLITAR']);
+    expect(destinationTokens('Kota Blitar'), ['BLITAR']);
+    expect(destinationTokens('ongkir dari Malang Kota ke Sibang 20 kilo'), ['SIBANG']);
   });
 
   group('berat terbilang dan token tujuan', () {
@@ -63,7 +69,9 @@ void main() {
       expect(parseWeight('seratus dua puluh kilo'), 120);
       expect(parseWeight('dua ratus lima puluh kilo'), 250);
       expect(parseWeight('dua ribu tiga ratus empat puluh kilo'), 2340);
-      expect(parseWeight('2.500 kg'), 2.5);
+      expect(parseWeight('2.500 kg'), 2500);
+      expect(parseWeight('1.500 kg'), 1500);
+      expect(parseWeight('2,5 kg'), 2.5);
       expect(parseWeight('seribu lima ratus kilo'), 1500);
     });
 
