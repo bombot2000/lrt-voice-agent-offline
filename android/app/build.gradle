@@ -4,12 +4,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 android {
     namespace = "com.example.cargo_voice_agent_offline"
     compileSdk = flutter.compileSdkVersion
@@ -25,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        // Jangan ubah applicationId: ini identitas paket aplikasi.
+        // Identitas paket tetap dipertahankan.
         applicationId = "com.example.lrt_voice_agent_offline"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -33,23 +27,11 @@ android {
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        release {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"]
-                keyPassword = keystoreProperties["keyPassword"]
-                storeFile = file(keystoreProperties["storeFile"])
-                storePassword = keystoreProperties["storePassword"]
-            }
-        }
-    }
-
     buildTypes {
         release {
-            if (!keystorePropertiesFile.exists()) {
-                throw new GradleException("Keystore release belum disiapkan. Tambahkan GitHub Secrets signing terlebih dahulu.")
-            }
-            signingConfig = signingConfigs.release
+            // Gunakan debug keystore otomatis milik runner GitHub Actions.
+            // Tidak memerlukan file JKS atau GitHub Secrets.
+            signingConfig = signingConfigs.debug
         }
     }
 }
