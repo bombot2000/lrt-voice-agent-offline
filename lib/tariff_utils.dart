@@ -102,7 +102,7 @@ String _indonesianIntegerWords(int value) {
 
 /// Menyiapkan teks khusus untuk TTS tanpa mengubah teks yang tampil di chat.
 String spokenVersion(String text) {
-  var result = text.replaceAllMapped(RegExp(r'Rp\\s*([0-9.]+)'), (match) {
+  var result = text.replaceAllMapped(RegExp(r'Rp\s*([0-9.]+)'), (match) {
     final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
     return amount == null ? match.group(0)! : '${_indonesianIntegerWords(amount)} rupiah';
   });
@@ -110,7 +110,7 @@ String spokenVersion(String text) {
       .replaceAll('×', ' kali ')
       .replaceAll('/kg', ' per kilogram')
       .replaceAll('kg', 'kilogram')
-      .replaceAll(RegExp(r'\\s+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
 
