@@ -247,7 +247,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   }
 
   if (lines.isEmpty) {
-    final unavailable = requested ?? selectedService ?? 'Reguler';
+    final unavailable = requested ?? selectedService;
     return 'Tarif $unavailable tidak tersedia untuk tujuan $destination. Data minimum atau tarif layanan belum lengkap.';
   }
 
