@@ -252,11 +252,11 @@ int _editDistance(String a, String b) {
 /// Merapikan jawaban untuk tampilan chat saat pengguna mengetik.
 /// Kalimat pembuka dipisahkan, sedangkan rincian ditampilkan sebagai poin.
 String formatTypedReply(String text) {
-  final normalized = text.replaceAll(RegExp(r'\\s+'), ' ').trim();
+  final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
   if (normalized.isEmpty) return normalized;
 
   final sentences = normalized
-      .split(RegExp(r'(?<=[.!?])\\s+(?=[A-Z0-9])'))
+      .split(RegExp(r'(?<=[.!?])\s+(?=[A-Z0-9])'))
       .where((part) => part.trim().isNotEmpty)
       .map((part) => part.trim())
       .toList();
@@ -266,5 +266,5 @@ String formatTypedReply(String text) {
     sentences.first,
     '',
     for (final detail in sentences.skip(1)) '• $detail',
-  ].join('\\n');
+  ].join('\n');
 }
