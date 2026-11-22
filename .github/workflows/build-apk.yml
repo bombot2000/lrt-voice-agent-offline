@@ -86,6 +86,27 @@ jobs:
           echo "Resolved Flutter plugins:"
           flutter pub deps --style=compact | head -100
 
+      - name: Generate missing Android Gradle scaffold safely
+        run: |
+          set -euo pipefail
+          if [ ! -f android/settings.gradle ] || [ ! -f android/gradlew ] || [ ! -d android/gradle/wrapper ]; then
+            echo "Android Gradle scaffold is incomplete; generating a clean Flutter Android scaffold."
+            flutter create --platforms=android --project-name=cargo_voice_agent_offline --org=com.example /tmp/cargo-android-scaffold
+            cp /tmp/cargo-android-scaffold/android/settings.gradle android/settings.gradle
+            cp /tmp/cargo-android-scaffold/android/build.gradle android/build.gradle
+            cp /tmp/cargo-android-scaffold/android/gradle.properties android/gradle.properties
+            cp /tmp/cargo-android-scaffold/android/gradlew android/gradlew
+            cp /tmp/cargo-android-scaffold/android/gradlew.bat android/gradlew.bat
+            mkdir -p android/gradle
+            cp -a /tmp/cargo-android-scaffold/android/gradle/wrapper android/gradle/
+            chmod +x android/gradlew
+          fi
+          test -f android/settings.gradle
+          test -f android/gradlew
+          test -f android/gradle/wrapper/gradle-wrapper.properties
+          grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
+          echo "Android Gradle scaffold and v2 embedding metadata are present."
+
       - name: Build release APK
         run: flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
 
