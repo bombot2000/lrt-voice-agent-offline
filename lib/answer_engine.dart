@@ -135,7 +135,9 @@ class AnswerEngine {
 }
 
 String _destinationOf(Map<String, Object?> r) =>
-    [r['village'], r['district'], r['city'], r['province']].join(', ');
+    [r['city'], r['district'], r['village'], r['province']]
+        .where((value) => value != null && value.toString().trim().isNotEmpty)
+        .join(', ');
 
 /// Menyusun jawaban tarif untuk satu baris tujuan.
 String buildFareAnswer(String query, Map<String, Object?> r) {
