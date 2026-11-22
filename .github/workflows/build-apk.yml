@@ -97,6 +97,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="cargo-build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          if [[ -f android/key.properties ]]; then
+            SIGNING_NOTE="APK ditandatangani dengan keystore tetap dari repository secrets."
+          else
+            SIGNING_NOTE="APK sementara ditandatangani dengan debug key. Tanda tangan dapat berubah antar-build; jangan uninstall aplikasi lama sebelum update signature dipastikan cocok."
+          fi
           gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
             --title "NEXT Cargo Voice Agent APK" \
-            --notes "Analyze dan test dijalankan pada commit ${GITHUB_SHA}. Tanda tangan debug; cocokkan sertifikat sebelum memasang sebagai pembaruan. Jangan uninstall aplikasi lama."
+            --notes "Analyze dan test dijalankan pada commit ${GITHUB_SHA}. ${SIGNING_NOTE}"
