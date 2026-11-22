@@ -84,7 +84,7 @@ String _indonesianIntegerWords(int value) {
 
 /// Teks TTS dipisahkan dari teks yang ditampilkan pada chat.
 String spokenVersion(String text) {
-  final result = text.replaceAllMapped(RegExp(r'\bRp\s*(\d{1,3}(?:\.\d{3})*|\d+)(?![\d.])'), (match) {
+  final result = text.replaceAllMapped(RegExp(r'\bRp\s*(\d{1,3}(?:\.\d{3})*|\d+)(?![\d.]\d)'), (match) {
     final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
     return amount == null ? match.group(0)! : '${_indonesianIntegerWords(amount)} rupiah';
   });
