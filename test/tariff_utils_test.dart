@@ -31,6 +31,16 @@ void main() {
     });
   });
 
+
+  test('formatTypedReply separates opening and lists fare details', () {
+    expect(
+      formatTypedReply(
+        'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke Sibang, Abiansemal, Badung untuk berat 30 kg. Berat memenuhi minimum Reguler, memakai tarif Reguler. Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000.',
+      ),
+      'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke Sibang, Abiansemal, Badung untuk berat 30 kg.\\n\\n• Berat memenuhi minimum Reguler, memakai tarif Reguler.\\n• Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000.',
+    );
+  });
+
   test('spokenVersion preserves sentence punctuation and words containing kg', () {
     expect(spokenVersion('Tarif khusus Rp 3.400. Tarif Pakgading tersedia.'),
         'Tarif khusus tiga ribu empat ratus rupiah. Tarif Pakgading tersedia.');
