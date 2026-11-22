@@ -1,4 +1,4 @@
-name: Build Cargo Voice Agent APK (Signed)
+name: Build Cargo Voice Agent APK (No Keystore)
 
 on:
   push:
@@ -9,12 +9,12 @@ permissions:
   contents: write
 
 jobs:
-  activate-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Extract uploaded source archive when present
         run: |
@@ -38,38 +38,13 @@ jobs:
               --exclude='android/*.keystore' \
               "$PROJECT_DIR/" ./
             rm -f "$ARCHIVE"
-          else
-            echo "Archive absent; build current repository sources."
           fi
 
-      - name: Verify application identity and signing secrets
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+      - name: Verify application identity
         run: |
           set -euo pipefail
           grep -Eq 'applicationId[[:space:]]*=[[:space:]]*"com\.example\.lrt_voice_agent_offline"' android/app/build.gradle
           grep -q '^name: cargo_voice_agent_offline$' pubspec.yaml
-          for name in KEYSTORE_BASE64 KEY_ALIAS KEY_PASSWORD STORE_PASSWORD; do
-            if [ -z "${!name}" ]; then
-              echo "::error::GitHub Secret untuk signing belum lengkap: ${name}"
-              exit 1
-            fi
-          done
-          echo "Identitas aplikasi dan semua secret signing tersedia."
-
-      - name: Commit extracted source files to main
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "Update NEXT Cargo Voice Agent sources [skip ci]"
-            git push origin HEAD:main
-          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -81,24 +56,6 @@ jobs:
           flutter-version: '3.38.0'
           cache: true
 
-      - name: Configure permanent Android signing
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
-          test -s android/app/release-key.jks
-          cat > android/key.properties <<EOF
-          storePassword=$STORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
-          storeFile=release-key.jks
-          EOF
-          chmod 600 android/key.properties android/app/release-key.jks
-
       - name: Install dependencies
         run: flutter pub get
 
@@ -107,12 +64,6 @@ jobs:
 
       - name: Run tests
         run: flutter test
-
-      - name: Diagnose legacy Android embedding references
-        run: |
-          set +e
-          grep -RInE 'io\.flutter\.app\.(FlutterActivity|FlutterApplication)|PluginRegistry\.Registrar|registerWith\(' android "$HOME/.pub-cache/hosted/pub.dev" 2>/dev/null | head -200 || true
-          flutter pub deps --style=compact | head -100
 
       - name: Generate missing Android Gradle scaffold safely
         run: |
@@ -136,34 +87,22 @@ jobs:
           test -f android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
 
-      - name: Build signed release APK
+      - name: Build APK with automatic debug signing
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4; do
-            if flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 4 ]; then exit 1; fi
-            sleep $((attempt * 30))
-          done
+          flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner" verify --verbose "$APK"
+          sha256sum "$APK"
 
-      - name: Verify APK signature
-        id: apk
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-release.apk"
-          test -s "$APK"
-          jarsigner -verify -verbose -certs "$APK" >/tmp/apk-signature-check.txt
-          grep -q 'jar verified' /tmp/apk-signature-check.txt
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
-          sha256sum "$APK"
-
-      - name: Publish signed APK to GitHub Releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="cargo-build-signed-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$TAG" "${{ steps.apk.outputs.path }}" \
-            --title "NEXT Cargo Voice Agent APK (Signed)" \
-            --notes "APK Release bertanda tangan permanen. Application ID: com.example.lrt_voice_agent_offline. Build commit: ${GITHUB_SHA}. Pertahankan keystore yang sama untuk semua pembaruan."
+          TAG="cargo-build-no-keystore-\${GITHUB_RUN_NUMBER}-\${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" "$APK" \
+            --title "NEXT Cargo Voice Agent APK (No Keystore)" \
+            --notes "APK release ditandatangani otomatis menggunakan debug keystore runner. Tidak membutuhkan keystore atau Secrets. Application ID: com.example.lrt_voice_agent_offline. Build commit: \${GITHUB_SHA}. Catatan: tanda tangan debug runner tidak dijamin stabil untuk pembaruan lintas build."
