@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
 import 'next_cargo_tariff_service.dart';
+import 'tariff_utils.dart' show spokenVersion;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -49,6 +50,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   // Guard agar hasil final yang terkirim dua kali tidak diproses ganda.
   String _lastQuery = '';
   DateTime _lastQueryTime = DateTime.fromMillisecondsSinceEpoch(0);
+  Future<void> _queryQueue = Future<void>.value();
+  int _queryRevision = 0;
 
   final List<Map<String, String>> _messages = [
     {
@@ -232,17 +235,21 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     _lastQuery = query;
     _lastQueryTime = now;
     _voiceMode = speak;
-
-    final reply = await _engine.ask(query);
-    if (!mounted) return;
-    _showReply(query, reply);
+    final revision = ++_queryRevision;
+    // Serialisasi query agar hasil STT dan ketikan tidak mengubah state dialog bersamaan.
+    _queryQueue = _queryQueue.then((_) async {
+      final reply = await _engine.ask(query);
+      if (!mounted || revision != _queryRevision) return;
+      _showReply(query, reply, speak: speak);
+    });
+    await _queryQueue;
   }
 
   Future<void> _handleChoice(Choice choice) async {
     if (_isSpeaking) await _tts.stop();
     final reply = _engine.select(choice);
     if (!mounted) return;
-    _showReply(choice.label, reply);
+    _showReply(choice.label, reply, speak: _voiceMode);
   }
 
   Future<void> _submitText(String raw) async {
@@ -257,7 +264,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     await _handleQuery(query, speak: false);
   }
 
-  void _showReply(String userText, Reply reply) {
+  void _showReply(String userText, Reply reply, {required bool speak}) {
     setState(() {
       _messages.add({'role': 'user', 'text': userText});
       _messages.add({'role': 'agent', 'text': reply.text});
@@ -265,12 +272,12 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       _statusText = _defaultStatus;
     });
     _scrollToBottom();
-    if (_voiceMode) _speak(reply.text);
+    if (speak) _speak(reply.text);
   }
 
   Future<void> _speak(String text) async {
     try {
-      await _tts.speak(text);
+      await _tts.speak(spokenVersion(text));
     } catch (_) {
       // Jawaban tetap tampil sebagai teks.
     }
