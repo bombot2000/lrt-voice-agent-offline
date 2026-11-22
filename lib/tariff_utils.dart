@@ -262,7 +262,48 @@ String formatTypedReply(String text) {
   if (sentences.isEmpty) return normalized;
   final first = sentences.first;
   final routePattern = RegExp(
-    r'^(?:Perkiraan ongkir|Tarif NEXT Cargo) dari (.+?) ke (.+?)(?: untuk berat (.+?) kg)?(?: \([^)]*\))?\.$',
+    r'^(?:Perkiraan ongkir(?: NEXT Cargo)?|Tarif NEXT Cargo) dari (.+?) ke (.+?)(?: untuk berat (.+?) kg)?(?: \([^)]*\))?\.
+  );
+  final route = routePattern.firstMatch(first);
+  if (route == null) {
+    if (sentences.length < 2) return normalized;
+    return [
+      sentences.first,
+      '',
+      for (final detail in sentences.skip(1)) '• $detail',
+    ].join('\n');
+  }
+  final hasWeight = route.group(3) != null;
+  final output = <String>[
+    hasWeight ? 'PERKIRAAN ONGKIR NEXT CARGO' : 'INFORMASI TARIF NEXT CARGO',
+    'Rute: ${route.group(1)} → ${route.group(2)}',
+    if (hasWeight) 'Berat: ${route.group(3)} kg',
+  ];
+  final serviceLines = <String>[];
+  final notes = <String>[];
+  for (final detail in sentences.skip(1)) {
+    final service = RegExp(r'^(Reguler|SP1|SP2|SP3):\s*(.+)').firstMatch(detail);
+    if (service != null) {
+      serviceLines.add('${service.group(1)}: ${service.group(2)}');
+    } else if (detail.startsWith('Tarif khusus ')) {
+      serviceLines.add(detail);
+    } else {
+      notes.add(detail);
+    }
+  }
+  if (notes.isNotEmpty) {
+    output.add('');
+    output.add('Catatan:');
+    output.addAll(notes.map((note) => '• $note'));
+  }
+  if (serviceLines.isNotEmpty) {
+    output.add('');
+    output.add('Rincian tarif:');
+    output.addAll(serviceLines.map((line) => '• $line'));
+  }
+  return output.join('\n');
+}
+,
   );
   final route = routePattern.firstMatch(first);
   if (route == null) {
