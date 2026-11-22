@@ -1,0 +1,910 @@
+diff -ruN orig/lib/answer_engine.dart lrt-voice-agent-offline-cargo-build-115-patched/lib/answer_engine.dart
+--- orig/lib/answer_engine.dart	2026-11-22 06:06:48.245961249 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/lib/answer_engine.dart	2026-11-22 06:18:15.655551934 +0000
+@@ -4,6 +4,14 @@
+ /// bisa diuji tanpa SQLite.
+ abstract class TariffLookup {
+   Future<List<Map<String, Object?>>> find(String query);
++
++  /// Kecamatan berbeda yang cocok: satu baris per kecamatan, kelurahan kosong.
++  Future<List<Map<String, Object?>>> findDistricts(String query);
++
++  /// Semua kelurahan pada satu kecamatan.
++  Future<List<Map<String, Object?>>> findByDistrict(
++      String province, String city, String district);
++
+   Future<int> count();
+ }
+ 
+@@ -31,7 +39,10 @@
+ class Choice {
+   final String label;
+   final Map<String, Object?> row;
+-  const Choice(this.label, this.row);
++
++  /// True bila pilihan ini satu kecamatan (bukan satu kelurahan).
++  final bool isDistrict;
++  const Choice(this.label, this.row, {this.isDistrict = false});
+ }
+ 
+ /// Jawaban mesin: teks (untuk ditampilkan dan dibacakan) dan pilihan tujuan.
+@@ -62,10 +73,32 @@
+   Future<String> answer(String query) async => (await ask(query)).text;
+ 
+   /// Jawaban setelah pengguna mengetuk salah satu pilihan.
+-  Reply select(Choice choice) {
++  Future<Reply> select(Choice choice) async {
+     final query = _pendingQuery;
+-    reset();
+-    return Reply(buildFareAnswer(query, choice.row));
++    if (!choice.isDistrict) {
++      reset();
++      return Reply(buildFareAnswer(query, choice.row));
++    }
++    // Kecamatan dipilih: lanjutkan ke kelurahan, atau langsung jawab bila
++    // tarif seluruh kelurahan di kecamatan itu sama.
++    final d = choice.row;
++    List<Map<String, Object?>> rows;
++    try {
++      rows = await tariffs.findByDistrict(
++          '${d['province']}', '${d['city']}', '${d['district']}');
++    } catch (_) {
++      rows = const [];
++    }
++    if (rows.isEmpty) {
++      reset();
++      return const Reply(
++          'Data kecamatan tidak ditemukan. Coba sebutkan ulang tujuan.');
++    }
++    if (rows.length == 1) {
++      reset();
++      return Reply(buildFareAnswer(query, rows.first));
++    }
++    return _withinDistrict(rows, query, complete: rows.length < kMaxDistrictRows);
+   }
+ 
+   Future<Reply> ask(String query) async {
+@@ -100,7 +133,7 @@
+       return Reply(
+           'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $total tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.');
+     }
+-    if (matches.length > 1) return _ambiguous(matches, query);
++    if (matches.length > 1) return _disambiguate(matches, query);
+     return Reply(buildFareAnswer(query, matches.first));
+   }
+ 
+@@ -109,7 +142,8 @@
+   Future<Reply?> _narrow(String query) async {
+     final tokens = destinationTokens(query);
+     if (tokens.isEmpty) return null;
+-    final combined = '$_pendingQuery $query';
++    // Ucapan baru di depan: berat atau layanan baru menggantikan yang lama.
++    final combined = '$query $_pendingQuery';
+     // Cari ulang seluruh database: _pending hanya memuat maksimal 8 pilihan UI.
+     final narrowed = await tariffs.find(combined);
+     if (narrowed.isEmpty) return null;
+@@ -118,7 +152,62 @@
+       reset();
+       return Reply(buildFareAnswer(combined, narrowed.first));
+     }
+-    return _ambiguous(narrowed, combined);
++    return _disambiguate(narrowed, combined);
++  }
++
++  /// Kota/kabupaten saja belum cukup: bila hasilnya mencakup beberapa
++  /// kecamatan, tanyakan kecamatan dulu, baru kelurahan.
++  Future<Reply> _disambiguate(
++      List<Map<String, Object?>> rows, String query) async {
++    List<Map<String, Object?>> districts;
++    try {
++      districts = await tariffs.findDistricts(query);
++    } catch (_) {
++      districts = const [];
++    }
++    if (districts.length > 1) {
++      _pendingQuery = query;
++      _pending = rows;
++      final count = districts.length >= kMaxDistrictMatches
++          ? 'Ada banyak kecamatan'
++          : 'Ada ${districts.length} kecamatan';
++      return Reply(
++        '$count yang cocok. Pilih salah satu di layar, atau sebutkan nama kecamatan.',
++        [
++          for (final d in districts.take(6))
++            Choice(_districtLabel(d), d, isDistrict: true),
++        ],
++      );
++    }
++
++    var all = rows;
++    var complete = rows.length < kMaxTariffMatches;
++    if (!complete && rows.isNotEmpty) {
++      // Hasil terpotong: ambil seluruh kelurahan kecamatan itu.
++      try {
++        final r = rows.first;
++        final fetched = await tariffs.findByDistrict(
++            '${r['province']}', '${r['city']}', '${r['district']}');
++        if (fetched.isNotEmpty) {
++          all = fetched;
++          complete = fetched.length < kMaxDistrictRows;
++        }
++      } catch (_) {}
++    }
++    return _withinDistrict(all, query, complete: complete);
++  }
++
++  /// Semua kandidat berada di satu kecamatan. Bila tarif seluruh kelurahan
++  /// identik, jawab pada tingkat kecamatan; bila tidak, tanya kelurahan.
++  Reply _withinDistrict(List<Map<String, Object?>> rows, String query,
++      {required bool complete}) {
++    if (complete && rows.length > 1 && _sameTariff(rows)) {
++      reset();
++      final row = <String, Object?>{...rows.first, 'village': ''};
++      return Reply(
++          '${buildFareAnswer(query, row)} Tarif sama untuk semua kelurahan di kecamatan ini.');
++    }
++    return _ambiguous(rows, query);
+   }
+ 
+   Reply _ambiguous(List<Map<String, Object?>> rows, String query) {
+@@ -135,7 +224,29 @@
+ }
+ 
+ String _destinationOf(Map<String, Object?> r) =>
+-    [r['village'], r['district'], r['city'], r['province']].join(', ');
++    [r['village'], r['district'], r['city'], r['province']]
++        .map((v) => (v ?? '').toString().trim())
++        .where((v) => v.isNotEmpty)
++        .join(', ');
++
++String _districtLabel(Map<String, Object?> r) =>
++    [r['district'], r['city'], r['province']]
++        .map((v) => (v ?? '').toString().trim())
++        .where((v) => v.isNotEmpty)
++        .join(', ');
++
++/// True bila semua baris identik selain kolom kelurahan.
++bool _sameTariff(List<Map<String, Object?>> rows) {
++  String signature(Map<String, Object?> r) {
++    final keys = r.keys.where((k) => k != 'village' && k != 'id').toList()
++      ..sort();
++    return keys.map((k) => '$k=${(r[k] ?? '').toString().trim()}').join('|');
++  }
++
++  if (rows.isEmpty) return false;
++  final first = signature(rows.first);
++  return rows.every((r) => signature(r) == first);
++}
+ 
+ /// Menyusun jawaban tarif untuk satu baris tujuan.
+ String buildFareAnswer(String query, Map<String, Object?> r) {
+diff -ruN orig/lib/main.dart lrt-voice-agent-offline-cargo-build-115-patched/lib/main.dart
+--- orig/lib/main.dart	2026-11-22 06:06:48.245984663 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/lib/main.dart	2026-11-22 06:18:15.655730148 +0000
+@@ -237,8 +237,16 @@
+     _voiceMode = speak;
+     final revision = ++_queryRevision;
+     // Serialisasi query agar hasil STT dan ketikan tidak mengubah state dialog bersamaan.
+-    _queryQueue = _queryQueue.then((_) async {
+-      final reply = await _engine.ask(query);
++    // catchError memastikan satu kegagalan tidak membuat antrean macet selamanya.
++    _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
++      Reply reply;
++      try {
++        reply = await _engine.ask(query);
++      } catch (_) {
++        _engine.reset();
++        reply = const Reply(
++            'Terjadi kesalahan saat membaca data tarif. Coba lagi, atau impor ulang lewat menu Kelola Data Ongkir.');
++      }
+       if (!mounted || revision != _queryRevision) return;
+       _showReply(query, reply, speak: speak);
+     });
+@@ -247,7 +255,7 @@
+ 
+   Future<void> _handleChoice(Choice choice) async {
+     if (_isSpeaking) await _tts.stop();
+-    final reply = _engine.select(choice);
++    final reply = await _engine.select(choice);
+     if (!mounted) return;
+     _showReply(choice.label, reply, speak: _voiceMode);
+   }
+diff -ruN orig/lib/next_cargo_tariff_service.dart lrt-voice-agent-offline-cargo-build-115-patched/lib/next_cargo_tariff_service.dart
+--- orig/lib/next_cargo_tariff_service.dart	2026-11-22 06:06:48.245997471 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/lib/next_cargo_tariff_service.dart	2026-11-22 06:18:15.655755052 +0000
+@@ -91,12 +91,14 @@
+ class NextCargoTariffService {
+   static Database? _db;
+   static Set<String>? _destinationVocabulary;
++  static Set<String>? _cityWords;
+ 
+   /// Mengisolasi database antar pengujian integrasi tanpa memengaruhi aplikasi.
+   static Future<void> resetForTesting() async {
+     final db = _db;
+     _db = null;
+     _destinationVocabulary = null;
++    _cityWords = null;
+     if (db != null && db.isOpen) await db.close();
+     final root = await getDatabasesPath();
+     await deleteDatabase(p.join(root, 'next_cargo_tariffs.db'));
+@@ -381,6 +383,7 @@
+       if (pending > 0) await batch.commit(noResult: true);
+     });
+     _destinationVocabulary = null;
++    _cityWords = null;
+     return count;
+   }
+ 
+@@ -407,6 +410,7 @@
+           'INSERT INTO tariffs (id,${cols.join(',')}) SELECT id,${cols.join(',')} FROM tariff_backup');
+       await t.update('tariff_backup_meta', {'available': 0}, where: 'id = 1');
+       _destinationVocabulary = null;
++      _cityWords = null;
+       return true;
+     });
+   }
+@@ -428,37 +432,139 @@
+     return words;
+   }
+ 
++  /// Kata-kata nama kota/kabupaten pada data (di-cache seperti kosakata).
++  static Future<Set<String>> _loadCityWords(Database db) async {
++    final cached = _cityWords;
++    if (cached != null) return cached;
++    final rows = await db.rawQuery('SELECT DISTINCT city FROM tariffs WHERE city IS NOT NULL');
++    final words = <String>{};
++    for (final row in rows) {
++      final value = (row['city'] ?? '').toString().toUpperCase();
++      words.addAll(value.split(RegExp(r'[^A-Z0-9]+')).where((w) => w.length >= 3));
++    }
++    _cityWords = words;
++    return words;
++  }
++
+   static Future<List<Map<String, Object?>>> _queryTokens(
+-      Database db, List<String> tokens) async {
++      Database db, List<String> tokens, List<String?> fields) async {
+     if (tokens.isEmpty) return [];
+-    final clauses = <String>[], args = <Object?>[];
+-    for (final token in tokens) {
+-      clauses.add('(${_addressFields.map((f) => '$f LIKE ?').join(' OR ')})');
+-      for (var i = 0; i < _addressFields.length; i++) {
+-        args.add('%$token%');
+-      }
+-    }
++    final (where, args) = util.buildTokenWhere(tokens, fields, _addressFields);
+     return db.query('tariffs',
+         columns: cols,
+-        where: clauses.join(' AND '),
++        where: where,
+         whereArgs: args,
+         orderBy: 'province ASC, city ASC, district ASC, village ASC',
+         limit: util.kMaxTariffMatches);
+   }
+ 
+-  static Future<List<Map<String, Object?>>> findDestination(
+-      String query) async {
+-    final db = await open();
++  /// Satu baris per kecamatan (kelurahan dikosongkan) untuk pencarian yang sama.
++  static Future<List<Map<String, Object?>>> _queryDistricts(
++      Database db, List<String> tokens, List<String?> fields) async {
++    if (tokens.isEmpty) return [];
++    final (where, args) = util.buildTokenWhere(tokens, fields, _addressFields);
++    final rows = await db.rawQuery(
++        'SELECT DISTINCT province, city, district FROM tariffs WHERE $where '
++        'ORDER BY province ASC, city ASC, district ASC LIMIT ?',
++        [...args, util.kMaxDistrictMatches]);
++    return [for (final r in rows) <String, Object?>{...r, 'village': ''}];
++  }
++
++  /// Menjalankan [run] dengan urutan percobaan yang makin longgar: jangkar
++  /// kolom, lalu tanpa Kota/Kabupaten, lalu tanpa jangkar, lalu koreksi ejaan.
++  static Future<List<Map<String, Object?>>> _search(
++    Database db,
++    String query,
++    Future<List<Map<String, Object?>>> Function(
++            List<String> tokens, List<String?> fields)
++        run,
++  ) async {
+     final tokens = util.destinationTokens(query);
+     if (tokens.isEmpty) return [];
+-    final exact = await _queryTokens(db, tokens);
++    final found = await _searchTokens(db, tokens, query, run);
++    if (found.isNotEmpty) return found;
++    // "ongkir malang surabaya": Malang adalah asal, bukan bagian tujuan.
++    if (tokens.length > 1 && tokens.contains('MALANG')) {
++      final rest = tokens.where((t) => t != 'MALANG').toList();
++      return _searchTokens(db, rest, query, run);
++    }
++    return found;
++  }
++
++  static Future<List<Map<String, Object?>>> _searchTokens(
++    Database db,
++    List<String> tokens,
++    String query,
++    Future<List<Map<String, Object?>>> Function(
++            List<String> tokens, List<String?> fields)
++        run,
++  ) async {
++    final fields = util.anchorFields(tokens, query);
++
++    // Kota dulu, lalu kecamatan: kata kota (dari data) dijangkarkan ke kolom
++    // kota dan sisanya ke kecamatan; bila kosong, sisanya bebas (kelurahan).
++    final cityWords = await _loadCityWords(db);
++    for (final districtForRest in const [true, false]) {
++      final hier = util.hierarchicalFields(tokens, fields, cityWords,
++          districtForRest: districtForRest);
++      if (hier.join('|') == fields.join('|')) continue;
++      final rows = await run(tokens, hier);
++      if (rows.isNotEmpty) return rows;
++    }
++
++    final exact = await run(tokens, fields);
+     if (exact.isNotEmpty) return exact;
+ 
++    final keep = <int>[
++      for (var i = 0; i < tokens.length; i++)
++        if (!util.softAdministrativeTokens.contains(tokens[i])) i,
++    ];
++    var baseTokens = tokens;
++    var baseFields = fields;
++    if (keep.isNotEmpty && keep.length != tokens.length) {
++      baseTokens = [for (final i in keep) tokens[i]];
++      baseFields = [for (final i in keep) fields[i]];
++      final relaxed = await run(baseTokens, baseFields);
++      if (relaxed.isNotEmpty) return relaxed;
++    }
++    // Penanda salah ucap ("kelurahan" untuk sebuah kecamatan): coba tanpa jangkar.
++    if (baseFields.any((f) => f != null)) {
++      final unanchored =
++          await run(baseTokens, List<String?>.filled(baseTokens.length, null));
++      if (unanchored.isNotEmpty) return unanchored;
++    }
++
+     // Kosakata dimuat sekali per versi data; impor dan restore mengosongkan cache.
+     final vocabulary = await _loadDestinationVocabulary(db);
+-    final corrected = util.resolveTokens(tokens, vocabulary);
+-    if (corrected.join('|') == tokens.join('|')) return [];
+-    return _queryTokens(db, corrected);
++    final corrected = util.resolveTokens(baseTokens, vocabulary);
++    if (corrected.join('|') == baseTokens.join('|')) return [];
++    final fuzzy = await run(corrected, baseFields);
++    if (fuzzy.isNotEmpty || !baseFields.any((f) => f != null)) return fuzzy;
++    return run(corrected, List<String?>.filled(corrected.length, null));
++  }
++
++  static Future<List<Map<String, Object?>>> findDestination(
++      String query) async {
++    final db = await open();
++    return _search(db, query, (t, f) => _queryTokens(db, t, f));
++  }
++
++  /// Kecamatan berbeda yang cocok dengan [query], satu baris per kecamatan.
++  static Future<List<Map<String, Object?>>> findDistricts(String query) async {
++    final db = await open();
++    return _search(db, query, (t, f) => _queryDistricts(db, t, f));
++  }
++
++  /// Semua kelurahan pada satu kecamatan.
++  static Future<List<Map<String, Object?>>> findByDistrict(
++      String province, String city, String district) async {
++    final db = await open();
++    return db.query('tariffs',
++        columns: cols,
++        where: 'province = ? AND city = ? AND district = ?',
++        whereArgs: [province, city, district],
++        orderBy: 'village ASC',
++        limit: util.kMaxDistrictRows);
+   }
+ }
+ 
+@@ -471,5 +577,14 @@
+       NextCargoTariffService.findDestination(query);
+ 
+   @override
++  Future<List<Map<String, Object?>>> findDistricts(String query) =>
++      NextCargoTariffService.findDistricts(query);
++
++  @override
++  Future<List<Map<String, Object?>>> findByDistrict(
++          String province, String city, String district) =>
++      NextCargoTariffService.findByDistrict(province, city, district);
++
++  @override
+   Future<int> count() => NextCargoTariffService.count();
+ }
+diff -ruN orig/lib/tariff_utils.dart lrt-voice-agent-offline-cargo-build-115-patched/lib/tariff_utils.dart
+--- orig/lib/tariff_utils.dart	2026-11-22 06:06:48.246008996 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/lib/tariff_utils.dart	2026-11-22 06:18:15.655772817 +0000
+@@ -127,19 +127,25 @@
+   return total + current;
+ }
+ 
++/// Konvensi Indonesia: titik + tepat 3 digit = ribuan ("1.500" = 1500,
++/// "0.500" tetap 0,5), koma = desimal ("2,5"), titik lain = desimal ("2.5").
++num? _parseWeightNumber(String raw) {
++  if (RegExp(r'^[1-9]\d{0,2}(?:\.\d{3})+$').hasMatch(raw)) {
++    return num.tryParse(raw.replaceAll('.', ''));
++  }
++  if (RegExp(r'^\d+,\d+$').hasMatch(raw)) {
++    return num.tryParse(raw.replaceAll(',', '.'));
++  }
++  if (RegExp(r'^\d+\.\d+$').hasMatch(raw)) return num.tryParse(raw);
++  return parseTariffNumber(raw);
++}
++
+ num? parseWeight(String query) {
+   final numeric = RegExp(
+-    r'(\d+(?:[.,]\d+)?)\s*(?:kg|kilo(?:gram)?)\b',
++    r'(\d+(?:[.,]\d+)*)\s*(?:kg|kilo(?:gram)?)\b',
+     caseSensitive: false,
+   ).firstMatch(query);
+-  if (numeric != null) {
+-    final raw = numeric.group(1)!;
+-    // Satu pemisah dalam konteks berat dianggap desimal, bukan ribuan.
+-    if (RegExp(r'^[0-9]+[.,][0-9]+$').hasMatch(raw)) {
+-      return num.tryParse(raw.replaceAll(',', '.'));
+-    }
+-    return parseTariffNumber(raw);
+-  }
++  if (numeric != null) return _parseWeightNumber(numeric.group(1)!);
+ 
+   final normalized = query.toLowerCase()
+       .replaceAll(RegExp(r'\bseratus\b'), 'se ratus')
+@@ -163,10 +169,80 @@
+   return num.tryParse('$whole.$digits');
+ }
+ 
++/// Kata administratif yang membantu membedakan Kota/Kabupaten, tetapi tidak
++/// boleh membuat pencarian gagal bila data tidak memuat awalan tersebut.
++const Set<String> softAdministrativeTokens = {'KOTA', 'KABUPATEN'};
++
++/// Batas daftar kecamatan yang ditawarkan dan baris kelurahan per kecamatan.
++const int kMaxDistrictMatches = 12;
++const int kMaxDistrictRows = 200;
++
++const Map<String, String> _anchorMarkers = {
++  'kecamatan': 'district', 'kec': 'district',
++  'kelurahan': 'village', 'kel': 'village', 'desa': 'village',
++};
++
++/// Kolom alamat yang dituju tiap token (sejajar dengan [tokens]); null berarti
++/// token boleh cocok di kolom mana pun. Kata setelah "kecamatan"/"kelurahan"
++/// hanya dicocokkan pada kolomnya, dan "kota"/"kabupaten" pada kolom kota,
++/// sehingga nama kecamatan tidak tertukar dengan nama kota atau kelurahan.
++List<String?> anchorFields(List<String> tokens, String query) {
++  final anchored = <String, String>{};
++  final text = query.toLowerCase().replaceAll(RegExp(r'\bjati\s+asih\b'), 'jatiasih');
++  for (final m in RegExp(r'\b(kecamatan|kec|kelurahan|kel|desa)\.?\s+([a-z0-9]+)')
++      .allMatches(text)) {
++    anchored.putIfAbsent(m.group(2)!.toUpperCase(), () => _anchorMarkers[m.group(1)]!);
++  }
++  return [
++    for (final t in tokens)
++      anchored[t] ?? (softAdministrativeTokens.contains(t) ? 'city' : null),
++  ];
++}
++
++/// Pencarian bertingkat: kata yang dikenal sebagai nama kota (dari data) dicocokkan
++/// pada kolom kota, lalu sisa kata dicocokkan pada kecamatan. Dengan begitu
++/// "malang Pakisaji" cukup tanpa menulis "Kota"/"Kabupaten" lengkap. Bila tidak
++/// ada kata kota, atau kata kurang dari dua, jangkar tidak diubah.
++List<String?> hierarchicalFields(
++    List<String> tokens, List<String?> base, Set<String> cityWords,
++    {required bool districtForRest}) {
++  if (tokens.length < 2) return base;
++  final result = [...base];
++  for (var i = 0; i < tokens.length; i++) {
++    if (result[i] == null && cityWords.contains(tokens[i])) result[i] = 'city';
++  }
++  if (!result.contains('city')) return base;
++  if (districtForRest) {
++    for (var i = 0; i < tokens.length; i++) {
++      if (result[i] == null) result[i] = 'district';
++    }
++  }
++  return result;
++}
++
++/// Klausa WHERE (tanpa kata WHERE) dan argumennya untuk pencarian tujuan.
++(String, List<Object?>) buildTokenWhere(
++    List<String> tokens, List<String?> fields, List<String> addressFields) {
++  final clauses = <String>[];
++  final args = <Object?>[];
++  for (var i = 0; i < tokens.length; i++) {
++    final field = i < fields.length ? fields[i] : null;
++    final targets = field != null && addressFields.contains(field)
++        ? [field]
++        : addressFields;
++    clauses.add('(${targets.map((f) => '$f LIKE ?').join(' OR ')})');
++    for (final _ in targets) {
++      args.add('%${tokens[i]}%');
++    }
++  }
++  return (clauses.join(' AND '), args);
++}
++
+ const Set<String> _ignoredWords = {
+   'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari',
+-  'tujuan', 'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang',
+-  'provinsi', 'propinsi', 'kecamatan', 'kelurahan', 'desa', 'reg', 'reguler',
++  'tujuan', 'menuju', 'pengiriman', 'kirim', 'paket', 'barang',
++  'provinsi', 'propinsi', 'kecamatan', 'kec', 'kelurahan', 'kel', 'desa',
++  'reg', 'reguler',
+   'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon', 'coba', 'cek',
+   'carikan', 'cari', 'info', 'informasi', 'hitung', 'hitungkan', 'kalkulasi',
+   'estimasi', 'berapa', 'untuk', 'dengan', 'berat', 'kg', 'kilo', 'kilogram',
+@@ -185,7 +261,11 @@
+ }
+ 
+ List<String> destinationTokens(String query) {
+-  final withoutWeight = query.toLowerCase()
++  // Asal selalu Malang Kota: "dari Malang Kota" bukan bagian dari tujuan.
++  final withoutOrigin = query.toLowerCase()
++      .replaceAll(RegExp(r'\bdari\s+(?:kota\s+)?malang(?:\s+kota)?\b'), ' ')
++      .replaceAll(RegExp(r'\b(?:kota\s+)?malang(?:\s+kota)?\s+ke\b'), ' ke ');
++  final withoutWeight = withoutOrigin
+       .replaceAll(RegExp(r'\bseratus\b'), 'se ratus')
+       .replaceAll(RegExp(r'\bseribu\b'), 'se ribu')
+       .replaceAll(
+diff -ruN orig/test/answer_engine_test.dart lrt-voice-agent-offline-cargo-build-115-patched/test/answer_engine_test.dart
+--- orig/test/answer_engine_test.dart	2026-11-22 06:06:48.246066243 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/test/answer_engine_test.dart	2026-11-22 06:18:15.655814061 +0000
+@@ -21,6 +21,45 @@
+     }).take(kMaxTariffMatches).toList();
+   }
+ 
++  bool _matches(Map<String, Object?> r, List<String> tokens) {
++    final text =
++        [r['province'], r['city'], r['district'], r['village']].join(' ');
++    return tokens.every(text.contains);
++  }
++
++  @override
++  Future<List<Map<String, Object?>>> findDistricts(String query) async {
++    if (failOnFind) throw StateError('db error');
++    final tokens = destinationTokens(query);
++    if (tokens.isEmpty) return [];
++    final seen = <String>{};
++    final result = <Map<String, Object?>>[];
++    for (final r in rows.where((r) => _matches(r, tokens))) {
++      final key = '${r['province']}|${r['city']}|${r['district']}';
++      if (seen.add(key)) {
++        result.add({
++          'province': r['province'],
++          'city': r['city'],
++          'district': r['district'],
++          'village': '',
++        });
++      }
++    }
++    return result.take(kMaxDistrictMatches).toList();
++  }
++
++  @override
++  Future<List<Map<String, Object?>>> findByDistrict(
++      String province, String city, String district) async {
++    return rows
++        .where((r) =>
++            r['province'] == province &&
++            r['city'] == city &&
++            r['district'] == district)
++        .take(kMaxDistrictRows)
++        .toList();
++  }
++
+   @override
+   Future<int> count() async => total;
+ }
+@@ -279,8 +318,14 @@
+     });
+ 
+     test('beberapa tujuan cocok meminta perincian', () async {
++      // Kelurahan berbeda dengan tarif berbeda: wajib memilih kelurahan.
++      final other = <String, Object?>{
++        ...abiansemal,
++        'village': 'MEKAR BUANA',
++        'tarif_reg': '4900',
++      };
+       final engine =
+-          AnswerEngine(FakeLookup(rows: [abiansemal, abiansemal], total: 2));
++          AnswerEngine(FakeLookup(rows: [abiansemal, other], total: 2));
+       expect(await engine.answer('ongkir ke Abiansemal'),
+           contains('2 tujuan yang cocok'));
+     });
+@@ -327,7 +372,7 @@
+     test('mengetuk pilihan memakai berat dari pertanyaan awal', () async {
+       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+       final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
+-      final answer = engine.select(r.choices.last);
++      final answer = await engine.select(r.choices.last);
+       expect(answer.text, contains('SIBANG KAJA'));
+       expect(answer.text, contains('berat aktual 20 kg'));
+       expect(answer.text, contains('Rp 130.000')); // 25 kg x 5.200
+@@ -357,12 +402,107 @@
+       ];
+       final engine = AnswerEngine(FakeLookup(rows: many, total: many.length));
+       final first = await engine.ask('ongkir ke Badung 20 kilo');
+-      expect(first.choices.length, 6);
++      // Kota saja belum cukup: yang ditawarkan kecamatan (2), bukan 6 kelurahan.
++      expect(first.choices.length, 2);
++      expect(first.choices.every((c) => c.isDistrict), isTrue);
+       final narrowed = await engine.ask('Sibang');
+       expect(narrowed.text, contains('SIBANG KAJA'));
+       expect(narrowed.text, contains('berat aktual 20 kg'));
+     });
+ 
++    group('kecamatan sebagai patokan setelah kota/kabupaten', () {
++      Map<String, Object?> blitar(String district, String village,
++              {String tarif = '4700'}) =>
++          {
++            ...abiansemal,
++            'province': 'JAWA TIMUR',
++            'city': 'KABUPATEN BLITAR',
++            'district': district,
++            'village': village,
++            'tarif_reg': tarif,
++          };
++
++      test('kabupaten saja menanyakan kecamatan, bukan kelurahan', () async {
++        final rows = [
++          blitar('GARUM', 'GARUM'),
++          blitar('GARUM', 'BUMIAYU'),
++          blitar('NGLEGOK', 'NGLEGOK'),
++          blitar('SANANKULON', 'SANANKULON'),
++        ];
++        final engine = AnswerEngine(FakeLookup(rows: rows, total: 4));
++        final r = await engine.ask('ongkir ke Kabupaten Blitar 20 kilo');
++        expect(r.text, contains('3 kecamatan yang cocok'));
++        expect(r.choices.length, 3);
++        expect(r.choices.every((c) => c.isDistrict), isTrue);
++        expect(r.choices.first.label,
++            'GARUM, KABUPATEN BLITAR, JAWA TIMUR');
++      });
++
++      test('mengetuk kecamatan bertarif sama langsung dijawab', () async {
++        final rows = [
++          blitar('GARUM', 'GARUM'),
++          blitar('GARUM', 'BUMIAYU'),
++          blitar('NGLEGOK', 'NGLEGOK'),
++        ];
++        final engine = AnswerEngine(FakeLookup(rows: rows, total: 3));
++        final r = await engine.ask('ongkir ke Blitar 20 kilo');
++        final a = await engine.select(r.choices.first); // GARUM
++        expect(a.choices, isEmpty);
++        expect(a.text, contains('GARUM, KABUPATEN BLITAR'));
++        expect(a.text, contains('Tarif sama untuk semua kelurahan'));
++        expect(a.text, contains('berat aktual 20 kg'));
++        expect(engine.hasPendingChoice, false);
++      });
++
++      test('kecamatan dengan tarif kelurahan berbeda menanyakan kelurahan',
++          () async {
++        final rows = [
++          blitar('GARUM', 'GARUM'),
++          blitar('GARUM', 'BUMIAYU', tarif: '5100'),
++          blitar('NGLEGOK', 'NGLEGOK'),
++        ];
++        final engine = AnswerEngine(FakeLookup(rows: rows, total: 3));
++        final r = await engine.ask('ongkir ke Blitar 20 kilo');
++        final step2 = await engine.select(r.choices.first); // GARUM
++        expect(step2.text, contains('2 tujuan yang cocok'));
++        expect(step2.choices.length, 2);
++        expect(step2.choices.any((c) => c.isDistrict), isFalse);
++        final done = await engine.select(step2.choices.last);
++        expect(done.text, contains('berat aktual 20 kg'));
++      });
++
++      test('menyebut nama kecamatan langsung menyempit tanpa mengulang',
++          () async {
++        final rows = [
++          blitar('GARUM', 'GARUM'),
++          blitar('GARUM', 'BUMIAYU'),
++          blitar('NGLEGOK', 'NGLEGOK'),
++        ];
++        final engine = AnswerEngine(FakeLookup(rows: rows, total: 3));
++        await engine.ask('ongkir ke Blitar 20 kilo');
++        final a = await engine.ask('Nglegok');
++        expect(a.text, contains('NGLEGOK'));
++        expect(a.text, contains('berat aktual 20 kg'));
++      });
++    });
++
++    test('follow-up dengan berat baru memakai berat baru', () async {
++      final many = <Map<String, Object?>>[
++        for (var i = 0; i < 12; i++)
++          <String, Object?>{
++            ...abiansemal,
++            'village': 'VILLAGE $i',
++            'district': 'BADUNG',
++          },
++        sibang,
++      ];
++      final engine = AnswerEngine(FakeLookup(rows: many, total: many.length));
++      await engine.ask('ongkir ke Badung 20 kilo');
++      final narrowed = await engine.ask('Sibang 30 kilo');
++      expect(narrowed.text, contains('SIBANG KAJA'));
++      expect(narrowed.text, contains('berat aktual 30 kg'));
++    });
++
+     test('jawaban yang tidak cocok kandidat dianggap pertanyaan baru',
+         () async {
+       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+diff -ruN orig/test/next_cargo_tariff_service_test.dart lrt-voice-agent-offline-cargo-build-115-patched/test/next_cargo_tariff_service_test.dart
+--- orig/test/next_cargo_tariff_service_test.dart	2026-11-22 06:06:48.246081594 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/test/next_cargo_tariff_service_test.dart	2026-11-22 06:18:15.655837236 +0000
+@@ -218,4 +218,81 @@
+     expect(await NextCargoTariffService.count(), 1);
+   });
+ 
++
++  test('Kota/Kabupaten dan frasa asal tidak membuat pencarian gagal', () async {
++    sqfliteFfiInit();
++    databaseFactory = databaseFactoryFfi;
++    await NextCargoTariffService.resetForTesting();
++    addTearDown(NextCargoTariffService.resetForTesting);
++
++    final parsed = await NextCargoTariffService.parse(
++      'soft.csv',
++      bytes('$header\n$row'),
++    );
++    await NextCargoTariffService.importParsed(parsed, replace: true);
++    final byOrigin = await NextCargoTariffService.findDestination(
++        'ongkir dari Malang Kota ke Abiansemal 20 kilo');
++    expect(byOrigin.length, 1);
++    final byKabupaten = await NextCargoTariffService.findDestination(
++        'ke Abiansemal Kabupaten Badung 20 kilo');
++    expect(byKabupaten.length, 1);
++  });
++
++  test('pencarian berpatokan pada kecamatan: jangkar, daftar kecamatan, per kecamatan', () async {
++    sqfliteFfiInit();
++    databaseFactory = databaseFactoryFfi;
++    await NextCargoTariffService.resetForTesting();
++    addTearDown(NextCargoTariffService.resetForTesting);
++
++    final parsed = await NextCargoTariffService.parse(
++      'district.csv',
++      bytes('$header\n$row'),
++    );
++    await NextCargoTariffService.importParsed(parsed, replace: true);
++
++    final anchored = await NextCargoTariffService.findDestination(
++        'ongkir ke kecamatan Abiansemal 20 kilo');
++    expect(anchored.length, 1);
++
++    final districts = await NextCargoTariffService.findDistricts(
++        'ongkir ke Badung 20 kilo');
++    expect(districts.length, 1);
++    expect(districts.single['district'], 'ABIANSEMAL');
++    expect(districts.single['village'], '');
++
++    final inDistrict = await NextCargoTariffService.findByDistrict(
++        'BALI', 'BADUNG', 'ABIANSEMAL');
++    expect(inDistrict.length, 1);
++  });
++
++  test('"malang Pakisaji": kota dulu lalu kecamatan, tanpa menulis Kota/Kabupaten', () async {
++    sqfliteFfiInit();
++    databaseFactory = databaseFactoryFfi;
++    await NextCargoTariffService.resetForTesting();
++    addTearDown(NextCargoTariffService.resetForTesting);
++
++    const place = 'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL';
++    final kabupaten =
++        row.replaceFirst(place, 'JAWA TIMUR,KABUPATEN MALANG,PAKISAJI,PAKISAJI');
++    // Kelurahan bernama sama di kecamatan lain: tidak boleh ikut terpilih.
++    final kota =
++        row.replaceFirst(place, 'JAWA TIMUR,KOTA MALANG,LOWOKWARU,PAKISAJI');
++    final parsed = await NextCargoTariffService.parse(
++      'malang.csv',
++      bytes('$header\n$kabupaten\n$kota'),
++    );
++    await NextCargoTariffService.importParsed(parsed, replace: true);
++
++    final hits =
++        await NextCargoTariffService.findDestination('tarif malang Pakisaji');
++    expect(hits.length, 1);
++    expect(hits.single['city'], 'KABUPATEN MALANG');
++    expect(hits.single['district'], 'PAKISAJI');
++
++    // "dari Malang" adalah asal; hanya Pakisaji yang dicari.
++    final origin = await NextCargoTariffService.findDestination(
++        'ongkir dari Malang ke Lowokwaru');
++    expect(origin.length, 1);
++    expect(origin.single['city'], 'KOTA MALANG');
++  });
+ }
+diff -ruN orig/test/tariff_utils_test.dart lrt-voice-agent-offline-cargo-build-115-patched/test/tariff_utils_test.dart
+--- orig/test/tariff_utils_test.dart	2026-11-22 06:06:48.246092528 +0000
++++ lrt-voice-agent-offline-cargo-build-115-patched/test/tariff_utils_test.dart	2026-11-22 06:18:15.655852858 +0000
+@@ -53,6 +53,74 @@
+     expect(destinationTokens('selamat pagi'), equals(<String>[]));
+     expect(destinationTokens('Kabupaten Blitar'), ['KABUPATEN', 'BLITAR']);
+     expect(destinationTokens('Kota Blitar'), ['KOTA', 'BLITAR']);
++    // Frasa asal tidak ikut menjadi token tujuan.
++    expect(destinationTokens('ongkir dari Malang Kota ke Sibang 20 kilo'),
++        ['SIBANG']);
++    expect(destinationTokens('dari kota malang ke Sibang'), ['SIBANG']);
++  });
++
++  group('jangkar kecamatan', () {
++    test('kata setelah kecamatan/kelurahan hanya cocok di kolomnya', () {
++      final tokens = destinationTokens('ke kecamatan Garum kelurahan Bumiayu');
++      expect(tokens, ['GARUM', 'BUMIAYU']);
++      expect(anchorFields(tokens, 'ke kecamatan Garum kelurahan Bumiayu'),
++          ['district', 'village']);
++    });
++
++    test('kota/kabupaten dijangkarkan ke kolom kota, sisanya bebas', () {
++      const q = 'ke Kabupaten Blitar 20 kilo';
++      expect(anchorFields(destinationTokens(q), q), ['city', null]);
++    });
++
++    test('kec dan kel tidak menjadi token tujuan', () {
++      expect(destinationTokens('kec Garum kel Bumiayu'), ['GARUM', 'BUMIAYU']);
++    });
++
++    test('buildTokenWhere membatasi kolom bila ada jangkar', () {
++      final (where, args) = buildTokenWhere(
++        ['GARUM', 'BLITAR'],
++        ['district', null],
++        ['province', 'city', 'district', 'village'],
++      );
++      expect(where,
++          '(district LIKE ?) AND (province LIKE ? OR city LIKE ? OR district LIKE ? OR village LIKE ?)');
++      expect(args.length, 5);
++      expect(args.first, '%GARUM%');
++    });
++  });
++
++  group('kota dulu, lalu kecamatan', () {
++    test('malang tanpa "dari" adalah bagian tujuan', () {
++      expect(destinationTokens('tarif malang Pakisaji'), ['MALANG', 'PAKISAJI']);
++    });
++
++    test('malang sebagai asal tidak ikut menjadi token', () {
++      expect(destinationTokens('ongkir dari Malang ke Pakisaji'), ['PAKISAJI']);
++      expect(destinationTokens('ongkir malang ke Pakisaji'), ['PAKISAJI']);
++    });
++
++    test('kata kota dijangkarkan ke kota dan sisanya ke kecamatan', () {
++      const cities = {'KOTA', 'KABUPATEN', 'MALANG', 'BLITAR'};
++      expect(
++          hierarchicalFields(['MALANG', 'PAKISAJI'], [null, null], cities,
++              districtForRest: true),
++          ['city', 'district']);
++      expect(
++          hierarchicalFields(['MALANG', 'PAKISAJI'], [null, null], cities,
++              districtForRest: false),
++          ['city', null]);
++    });
++
++    test('tanpa kata kota atau hanya satu kata, jangkar tidak berubah', () {
++      const cities = {'MALANG'};
++      expect(
++          hierarchicalFields(['PAKISAJI', 'GARUM'], [null, null], cities,
++              districtForRest: true),
++          [null, null]);
++      expect(
++          hierarchicalFields(['MALANG'], [null], cities, districtForRest: true),
++          [null]);
++    });
+   });
+ 
+   group('berat terbilang dan token tujuan', () {
+@@ -63,7 +131,12 @@
+       expect(parseWeight('seratus dua puluh kilo'), 120);
+       expect(parseWeight('dua ratus lima puluh kilo'), 250);
+       expect(parseWeight('dua ribu tiga ratus empat puluh kilo'), 2340);
+-      expect(parseWeight('2.500 kg'), 2.5);
++      expect(parseWeight('2.500 kg'), 2500);
++      expect(parseWeight('1.500 kg'), 1500);
++      expect(parseWeight('2,5 kg'), 2.5);
++      expect(parseWeight('2.5 kg'), 2.5);
++      expect(parseWeight('0.500 kg'), 0.5);
++      expect(parseWeight('20 kg'), 20);
+       expect(parseWeight('seribu lima ratus kilo'), 1500);
+     });
+ 
