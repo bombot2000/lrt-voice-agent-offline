@@ -109,7 +109,7 @@ class AnswerEngine {
   Future<Reply?> _narrow(String query) async {
     final tokens = destinationTokens(query);
     if (tokens.isEmpty) return null;
-    final combined = '$_pendingQuery $query';
+    final combined = '$query $_pendingQuery';
     // Cari ulang seluruh database: _pending hanya memuat maksimal 8 pilihan UI.
     final narrowed = await tariffs.find(combined);
     if (narrowed.isEmpty) return null;
@@ -189,7 +189,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       }
     }
 
-    if (requested != null && requestedMinimum != null && requestedMinimum > weight) {
+    if (requested != null && requestedMinimum != null && requestedMinimum > weight && eligible.isNotEmpty) {
       minimumNotice =
           '$requested belum berlaku karena minimum ${formatPlainNumber(requestedMinimum)} kg; digunakan layanan dengan minimum yang sudah terpenuhi.';
     } else if (requested != null && eligible.isNotEmpty &&
