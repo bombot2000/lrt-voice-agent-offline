@@ -7,6 +7,9 @@ Asisten suara (Speech-to-Text & Text-to-Speech) untuk menghitung ongkir **NEXT C
 - Bisa juga **mengetik** pertanyaan di kolom teks (jawaban hasil ketikan tidak dibacakan).
 - **Dialog bertahap:** bila tujuan ambigu, aplikasi menampilkan pilihan yang bisa diketuk. Cukup sebut kelurahan/kecamatan berikutnya ("Sibang"), berat dan layanan dari pertanyaan awal tetap dipakai.
 - Perhitungan per layanan (Reguler, SP1, SP2, SP3) dengan berat tagihan mengikuti minimum layanan tujuan.
+- Memahami berat angka maupun terbilang bahasa Indonesia, termasuk desimal: “lima belas kilo”, “dua puluh lima koma lima kg”, “seratus kilo”, dan “seribu lima ratus kilo”. Frasa berat dikeluarkan dari pencarian nama tujuan.
+- Mengenali akhiran kata perintah seperti “ongkirnya”, “tarifnya”, dan “hitungkan” tanpa mengubah ejaan nama wilayah.
+- Pencarian tujuan memiliki fuzzy fallback berbasis jarak edit terhadap kosakata wilayah dari SQLite. Kata pendek dan koreksi ambigu/tidak mirip tidak dipaksakan; kosakata di-cache dan direset setelah impor atau pemulihan backup.
 - Kelola data tarif langsung di aplikasi tanpa build APK ulang.
 - Impor JSON, CSV (pemisah koma, titik koma, atau tab), dan Excel `.xlsx`, dengan pratinjau dan validasi sebelum diterapkan. File dibaca di isolate terpisah sehingga UI tidak membeku.
 - Kolom angka dinormalisasi saat impor ("4.700", "4,700", "4700.0" menjadi 4700); teks non-angka, rentang, dan sel rumus Excel ditolak dengan nomor baris.
@@ -32,7 +35,7 @@ flutter build apk --release
 
 ## Struktur kode
 - `lib/answer_engine.dart`: mesin jawaban dan penyusun jawaban tarif (Dart murni, mudah diuji).
-- `lib/tariff_utils.dart`: parsing/format angka tarif.
+- `lib/tariff_utils.dart`: parsing/format angka tarif, berat terbilang, token tujuan, dan koreksi fuzzy.
 - `lib/next_cargo_tariff_service.dart`: parsing file, validasi, dan penyimpanan SQLite.
 - `lib/fare_manager_page.dart`, `lib/main.dart`: UI.
 
