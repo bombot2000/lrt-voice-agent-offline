@@ -65,17 +65,6 @@ num billableWeight(num actualWeight, num serviceMinimum) =>
 /// Jumlah maksimum tujuan yang dikembalikan pencarian.
 const int kMaxTariffMatches = 8;
 
-const Set<String> _ignoredWords = {
-  'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'tujuan',
-  'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang', 'kota',
-  'kabupaten', 'provinsi', 'propinsi', 'kecamatan', 'kelurahan', 'desa',
-  'reg', 'reguler', 'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon',
-  'coba', 'cek', 'carikan', 'cari', 'info', 'informasi', 'hitung', 'hitungkan',
-  'kalkulasi', 'estimasi', 'berapa', 'untuk', 'dengan', 'berat', 'kg', 'kilo',
-  'kilogram', 'saya', 'minta', 'dong', 'halo', 'hai', 'selamat', 'pagi',
-  'siang', 'sore', 'malam',
-};
-
 /// Bilangan Indonesia yang umum dipakai saat menyebut berat.
 const Map<String, int> _smallNumbers = {
   'nol': 0, 'kosong': 0, 'satu': 1, 'se': 1, 'dua': 2, 'tiga': 3,
