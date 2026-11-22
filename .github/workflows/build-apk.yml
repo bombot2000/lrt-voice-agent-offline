@@ -98,11 +98,11 @@ jobs:
 
       - name: Publish APK to GitHub Releases
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-release.apk"
-          TAG="cargo-build-no-keystore-\${GITHUB_RUN_NUMBER}-\${GITHUB_RUN_ATTEMPT}"
+          TAG="cargo-build-no-keystore-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" "$APK" \
             --title "NEXT Cargo Voice Agent APK (No Keystore)" \
-            --notes "APK release ditandatangani otomatis menggunakan debug keystore runner. Tidak membutuhkan keystore atau Secrets. Application ID: com.example.lrt_voice_agent_offline. Build commit: \${GITHUB_SHA}. Catatan: tanda tangan debug runner tidak dijamin stabil untuk pembaruan lintas build."
+            --notes "APK release ditandatangani otomatis menggunakan debug keystore runner. Tidak membutuhkan keystore atau Secrets. Application ID: com.example.lrt_voice_agent_offline. Build commit: ${GITHUB_SHA}. Catatan: tanda tangan debug runner tidak dijamin stabil untuk pembaruan lintas build."
