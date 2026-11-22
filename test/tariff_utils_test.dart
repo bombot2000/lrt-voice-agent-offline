@@ -47,8 +47,6 @@ void main() {
         equals(['ABIANSEMAL', 'BADUNG']));
     expect(destinationTokens('selamat pagi'), equals(<String>[]));
   });
-}
-
 
   group('berat terbilang dan token tujuan', () {
     test('membaca berat angka dalam kata dan desimal', () {
@@ -62,7 +60,7 @@ void main() {
       expect(destinationTokens('ongkir ke Abiansemal dua puluh kilo'),
           ['ABIANSEMAL']);
       expect(destinationTokens('tarif ke Denpasaar lima belas kilo'),
-          ['DENPAS AAR'.replaceAll(' ', '')]);
+          ['DENPASAAR']);
     });
 
     test('akhiran kata perintah dikenali tanpa memotong nama tujuan', () {
@@ -73,10 +71,12 @@ void main() {
 
     test('fuzzy koreksi hanya untuk kata yang cukup mirip', () {
       expect(resolveTokens(['ABIANSEMEL'], ['ABIANSEMAL']), ['ABIANSEMAL']);
-      expect(resolveTokens(['DENPAS AAR'.replaceAll(' ', '')], ['DENPASAR']),
+      expect(resolveTokens(['DENPASAAR'], ['DENPASAR']),
           ['DENPASAR']);
       expect(resolveTokens(['ATLANTIS'], ['ABIANSEMAL', 'DENPASAR']),
           ['ATLANTIS']);
       expect(resolveTokens(['KOT'], ['KOTA']), ['KOT']);
     });
   });
+
+}
