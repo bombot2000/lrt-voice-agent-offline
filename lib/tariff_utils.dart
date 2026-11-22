@@ -276,15 +276,15 @@ String formatTypedReply(String text) {
   final hasWeight = route.group(3) != null;
   final output = <String>[
     hasWeight ? 'PERKIRAAN ONGKIR NEXT CARGO' : 'INFORMASI TARIF NEXT CARGO',
-    'Rute: \${route.group(1)} → \${route.group(2)}',
-    if (hasWeight) 'Berat: \${route.group(3)} kg',
+    'Rute: ${route.group(1)} → ${route.group(2)}',
+    if (hasWeight) 'Berat: ${route.group(3)} kg',
   ];
   final serviceLines = <String>[];
   final notes = <String>[];
   for (final detail in sentences.skip(1)) {
     final service = RegExp(r'^(Reguler|SP1|SP2|SP3):\s*(.+)').firstMatch(detail);
     if (service != null) {
-      serviceLines.add('\${service.group(1)}: \${service.group(2)}');
+      serviceLines.add('${service.group(1)}: ${service.group(2)}');
     } else if (detail.startsWith('Tarif khusus ')) {
       serviceLines.add(detail);
     } else {
