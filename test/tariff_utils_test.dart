@@ -32,12 +32,21 @@ void main() {
   });
 
 
-  test('formatTypedReply separates opening and lists fare details', () {
+  test('formatTypedReply structures typed fare answer', () {
     expect(
       formatTypedReply(
-        'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke Sibang, Abiansemal, Badung untuk berat 30 kg. Berat memenuhi minimum Reguler, memakai tarif Reguler. Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000.',
+        'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke Sibang, Abiansemal, Badung untuk berat 30 kg (minimum layanan berlaku). Berat memenuhi minimum Reguler, memakai tarif Reguler. Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000.',
       ),
-      'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke Sibang, Abiansemal, Badung untuk berat 30 kg.\\n\\n• Berat memenuhi minimum Reguler, memakai tarif Reguler.\\n• Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000.',
+      'PERKIRAAN ONGKIR NEXT CARGO\\nRute: MALANG KOTA → Sibang, Abiansemal, Badung\\nBerat: 30 kg\\n\\nCatatan:\\n• Berat memenuhi minimum Reguler, memakai tarif Reguler.\\n\\nRincian tarif:\\n• Reguler: berat aktual 30 kg, berat tagihan 30 kg × Rp 5.200/kg = Rp 156.000',
+    );
+  });
+
+  test('formatTypedReply structures tariff without weight', () {
+    expect(
+      formatTypedReply(
+        'Tarif NEXT Cargo dari MALANG KOTA ke Blitar. Reguler: minimum 10 kg, total tarif minimum Rp 47.000; setiap kg berikutnya Rp 4.700/kg. Tarif khusus Rp 4.500.',
+      ),
+      'INFORMASI TARIF NEXT CARGO\\nRute: MALANG KOTA → Blitar\\n\\nRincian tarif:\\n• Reguler: minimum 10 kg, total tarif minimum Rp 47.000; setiap kg berikutnya Rp 4.700/kg\\n• Tarif khusus Rp 4.500',
     );
   });
 
