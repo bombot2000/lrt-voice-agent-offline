@@ -95,6 +95,8 @@ num? _parseIndonesianInteger(List<String> words) {
       current = (current == 0 ? 1 : current) * 10;
     } else if (word == 'ratus') {
       current = (current == 0 ? 1 : current) * 100;
+    } else if (word == 'belas') {
+      current += 10;
     } else if (word == 'ribu') {
       total += (current == 0 ? 1 : current) * 1000;
       current = 0;
@@ -113,10 +115,13 @@ num? parseWeight(String query) {
   ).firstMatch(query);
   if (numeric != null) return parseTariffNumber(numeric.group(1));
 
+  final normalized = query.toLowerCase()
+      .replaceAll(RegExp(r'\\bseratus\\b'), 'se ratus')
+      .replaceAll(RegExp(r'\\bseribu\\b'), 'se ribu');
   final words = RegExp(
     r'((?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*)\s*(?:kg|kilo(?:gram)?)\b',
     caseSensitive: false,
-  ).firstMatch(query.toLowerCase());
+  ).firstMatch(normalized);
   if (words == null) return null;
   final parts = words.group(1)!.replaceAll('-', ' ').split(RegExp(r'\s+'));
   final comma = parts.indexOf('koma');
@@ -156,7 +161,7 @@ String _commandStem(String word) {
 /// Token nama tujuan. Penghapusan imbuhan hanya untuk kata perintah yang
 /// dikenal; nama wilayah tidak pernah di-stem.
 List<String> destinationTokens(String query) {
-  final withoutWeight = query.toLowerCase().replaceAll(
+  final withoutWeight = query.toLowerCase()\n      .replaceAll(RegExp(r'\\bseratus\\b'), 'se ratus')\n      .replaceAll(RegExp(r'\\bseribu\\b'), 'se ribu')\n      .replaceAll(
     RegExp(r'\b(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*\s*(?:kg|kilo(?:gram)?)\b',
     caseSensitive: false,
   ), ' ');
