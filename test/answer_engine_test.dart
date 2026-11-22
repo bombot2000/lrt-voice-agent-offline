@@ -320,7 +320,7 @@ void main() {
       final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
       expect(r.text, contains('2 tujuan yang cocok'));
       expect(r.choices.length, 2);
-      expect(r.choices.first.label, 'ABIANSEMAL, ABIANSEMAL, BADUNG, BALI');
+      expect(r.choices.first.label, 'BADUNG, ABIANSEMAL, ABIANSEMAL, BALI');
       expect(engine.hasPendingChoice, true);
     });
 
