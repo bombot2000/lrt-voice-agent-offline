@@ -249,22 +249,48 @@ int _editDistance(String a, String b) {
 }
 
 
-/// Merapikan jawaban untuk tampilan chat saat pengguna mengetik.
-/// Kalimat pembuka dipisahkan, sedangkan rincian ditampilkan sebagai poin.
+/// Merapikan jawaban tarif untuk tampilan chat versi ketik.
+/// Jawaban suara tetap memakai teks asli agar nyaman dibacakan.
 String formatTypedReply(String text) {
-  final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final normalized = text.replaceAll(RegExp(r'\\s+'), ' ').trim();
   if (normalized.isEmpty) return normalized;
-
   final sentences = normalized
-      .split(RegExp(r'(?<=[.!?])\s+(?=[A-Z0-9])'))
+      .split(RegExp(r'(?<=[.!?])\\s+(?=[A-Z0-9])'))
       .where((part) => part.trim().isNotEmpty)
       .map((part) => part.trim())
       .toList();
-
-  if (sentences.length < 2) return normalized;
-  return [
-    sentences.first,
-    '',
-    for (final detail in sentences.skip(1)) '• $detail',
-  ].join('\n');
+  if (sentences.isEmpty) return normalized;
+  final first = sentences.first;
+  final route = RegExp(r'^(?:Perkiraan ongkir|Tarif NEXT Cargo) dari (.+?) ke (.+?)(?: untuk berat (.+?) kg)?(?: \\([^)]*\\))?\\.).firstMatch(first);
+  if (route == null) {
+    if (sentences.length < 2) return normalized;
+    return [sentences.first, '', for (final detail in sentences.skip(1)) '• $detail'].join('\\n');
+  }
+  final hasWeight = route.group(3) != null;
+  final output = <String>[
+    hasWeight ? 'PERKIRAAN ONGKIR NEXT CARGO' : 'INFORMASI TARIF NEXT CARGO',
+    'Rute: ${route.group(1)} → ${route.group(2)}',
+    if (hasWeight) 'Berat: ${route.group(3)} kg',
+  ];
+  final serviceLines = <String>[];
+  final notes = <String>[];
+  for (final detail in sentences.skip(1)) {
+    final service = RegExp(r'^(Reguler|SP1|SP2|SP3|Tarif khusus):\\s*(.+)).firstMatch(detail);
+    if (service != null) {
+      serviceLines.add('${service.group(1)}: ${service.group(2)}');
+    } else {
+      notes.add(detail);
+    }
+  }
+  if (notes.isNotEmpty) {
+    output.add('');
+    output.add('Catatan:');
+    output.addAll(notes.map((note) => '• $note'));
+  }
+  if (serviceLines.isNotEmpty) {
+    output.add('');
+    output.add('Rincian tarif:');
+    output.addAll(serviceLines.map((line) => '• $line'));
+  }
+  return output.join('\\n');
 }
