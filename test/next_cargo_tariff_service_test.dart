@@ -165,4 +165,41 @@ void main() {
     expect(await NextCargoTariffService.findDestination('DENPASAAR'), isEmpty);
   });
 
+
+  test('SQLite merge preserves other destinations and backup restore is single-use', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final original = await NextCargoTariffService.parse(
+      'original.csv',
+      bytes('$header\\n$row'),
+    );
+    await NextCargoTariffService.importParsed(original, replace: true);
+    expect(await NextCargoTariffService.count(), 1);
+
+    final secondRow = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KOTA MALANG,DENPASAR,DENPASAR',
+    );
+    final addition = await NextCargoTariffService.parse(
+      'second.csv',
+      bytes('$header\\n$secondRow'),
+    );
+    await NextCargoTariffService.importParsed(addition, replace: false);
+
+    expect(await NextCargoTariffService.count(), 2);
+    expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
+    expect(await NextCargoTariffService.findDestination('DENPASAR'), isNotEmpty);
+
+    expect(await NextCargoTariffService.restore(), isTrue);
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
+    expect(await NextCargoTariffService.findDestination('DENPASAR'), isEmpty);
+
+    expect(await NextCargoTariffService.restore(), isFalse);
+    expect(await NextCargoTariffService.count(), 1);
+  });
+
 }
