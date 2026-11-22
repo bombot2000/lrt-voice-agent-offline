@@ -130,6 +130,22 @@ void main() {
       );
     });
   });
+  test('first import does not create a restorable empty backup', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final parsed = await NextCargoTariffService.parse(
+      'first.csv',
+      bytes('$header\\n$row'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.restore(), isFalse);
+    expect(await NextCargoTariffService.count(), 1);
+  });
+
   test('SQLite fuzzy lookup and vocabulary cache invalidation on import/restore', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
