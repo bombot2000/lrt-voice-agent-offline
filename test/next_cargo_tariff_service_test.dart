@@ -138,7 +138,7 @@ void main() {
 
     final parsed = await NextCargoTariffService.parse(
       'first.csv',
-      bytes('$header\\n$row'),
+      bytes('$header\n$row'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
     expect(await NextCargoTariffService.count(), 1);
