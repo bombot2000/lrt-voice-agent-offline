@@ -31,6 +31,11 @@ void main() {
     });
   });
 
+  test('spokenVersion reads rupiah and tariff operators naturally', () {
+    expect(spokenVersion('Rp 117.500 × Rp 4.700/kg'),
+        'seratus tujuh belas ribu lima ratus rupiah  kali  empat ribu tujuh ratus rupiah per kilogram');
+  });
+
   test('formatPlainNumber dan formatRupiah', () {
     expect(formatPlainNumber(25.0), '25');
     expect(formatPlainNumber(12.5), '12.5');
