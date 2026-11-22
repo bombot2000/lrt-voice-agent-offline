@@ -105,8 +105,8 @@ num? parseWeight(String query) {
   if (numeric != null) return parseTariffNumber(numeric.group(1));
 
   final normalized = query.toLowerCase()
-      .replaceAll(RegExp(r'\\bseratus\\b'), 'se ratus')
-      .replaceAll(RegExp(r'\\bseribu\\b'), 'se ribu');
+      .replaceAll(RegExp(r'\bseratus\b'), 'se ratus')
+      .replaceAll(RegExp(r'\bseribu\b'), 'se ribu');
   final words = RegExp(
     r'((?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*)\s*(?:kg|kilo(?:gram)?)\b',
     caseSensitive: false,
@@ -150,7 +150,7 @@ String _commandStem(String word) {
 /// Token nama tujuan. Penghapusan imbuhan hanya untuk kata perintah yang
 /// dikenal; nama wilayah tidak pernah di-stem.
 List<String> destinationTokens(String query) {
-  final withoutWeight = query.toLowerCase()\n      .replaceAll(RegExp(r'\\bseratus\\b'), 'se ratus')\n      .replaceAll(RegExp(r'\\bseribu\\b'), 'se ribu')\n      .replaceAll(
+  final withoutWeight = query.toLowerCase()\n      .replaceAll(RegExp(r'\bseratus\b'), 'se ratus')\n      .replaceAll(RegExp(r'\bseribu\b'), 'se ribu')\n      .replaceAll(
     RegExp(r'\b(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*\s*(?:kg|kilo(?:gram)?)\b',
     caseSensitive: false,
   ), ' ');
