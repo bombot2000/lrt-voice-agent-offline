@@ -18,7 +18,7 @@ class FakeLookup implements TariffLookup {
       final text =
           [r['province'], r['city'], r['district'], r['village']].join(' ');
       return tokens.every(text.contains);
-    }).toList();
+    }).take(kMaxTariffMatches).toList();
   }
 
   @override
@@ -163,6 +163,30 @@ void main() {
       expect(a, contains('Rp 1.125.000'));
       expect(a, isNot(contains('Reguler:')));
       expect(a, isNot(contains('SP3:')));
+    });
+
+    test('permintaan Reguler diberi tahu bila berat masuk tier lebih tinggi', () async {
+      final row = <String, Object?>{
+        ...bekasiJatiAsih,
+        'min_sp2': '300',
+        'tarif_sp2': '4300',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 300 kg Reguler');
+      expect(a, contains('Berat memenuhi minimum SP2, memakai tarif SP2.'));
+      expect(a, contains('SP2: berat aktual 300 kg'));
+    });
+
+    test('berat tidak menghasilkan jawaban tanpa angka jika tarif Reguler kosong', () async {
+      final row = <String, Object?>{
+        ...abiansemal,
+        'min_reg': '',
+        'tarif_reg': '',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+      final a = await engine.answer('Abiansemal 20 kg');
+      expect(a, contains('Tarif Reguler tidak tersedia'));
+      expect(a, isNot(contains('minimum layanan berlaku).')));
     });
 
     test('SP2 dipilih saat berat memenuhi minimum SP2 dan belum SP3', () async {
@@ -319,6 +343,24 @@ void main() {
       expect(r.text, contains('berat aktual 20 kg'));
       expect(r.choices, isEmpty);
       expect(engine.hasPendingChoice, false);
+    });
+
+    test('follow-up menemukan tujuan di luar delapan kandidat awal', () async {
+      final many = <Map<String, Object?>>[
+        for (var i = 0; i < 12; i++)
+          <String, Object?>{
+            ...abiansemal,
+            'village': 'VILLAGE $i',
+            'district': 'BADUNG',
+          },
+        sibang,
+      ];
+      final engine = AnswerEngine(FakeLookup(rows: many, total: many.length));
+      final first = await engine.ask('ongkir ke Badung 20 kilo');
+      expect(first.choices.length, 6);
+      final narrowed = await engine.ask('Sibang');
+      expect(narrowed.text, contains('SIBANG KAJA'));
+      expect(narrowed.text, contains('berat aktual 20 kg'));
     });
 
     test('jawaban yang tidak cocok kandidat dianggap pertanyaan baru',
