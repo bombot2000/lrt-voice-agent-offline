@@ -90,6 +90,7 @@ class _ParseOutcome {
 
 class NextCargoTariffService {
   static Database? _db;
+  static Set<String>? _destinationVocabulary;
 
   static Future<Database> open() async {
     if (_db != null) return _db!;
@@ -362,6 +363,7 @@ class NextCargoTariffService {
       }
       if (pending > 0) await batch.commit(noResult: true);
     });
+    _destinationVocabulary = null;
     return count;
   }
 
@@ -387,14 +389,30 @@ class NextCargoTariffService {
       await t.execute(
           'INSERT INTO tariffs (id,${cols.join(',')}) SELECT id,${cols.join(',')} FROM tariff_backup');
       await t.update('tariff_backup_meta', {'available': 0}, where: 'id = 1');
+      _destinationVocabulary = null;
       return true;
     });
   }
 
-  static Future<List<Map<String, Object?>>> findDestination(
-      String query) async {
-    final db = await open();
-    final tokens = util.destinationTokens(query);
+  static Future<Set<String>> _loadDestinationVocabulary(Database db) async {
+    final cached = _destinationVocabulary;
+    if (cached != null) return cached;
+    final words = <String>{};
+    for (final field in _addressFields) {
+      final rows = await db.rawQuery(
+        'SELECT DISTINCT $field FROM tariffs WHERE $field IS NOT NULL',
+      );
+      for (final row in rows) {
+        final value = (row[field] ?? '').toString().toUpperCase();
+        words.addAll(value.split(RegExp(r'[^A-Z0-9]+')).where((w) => w.length > 3));
+      }
+    }
+    _destinationVocabulary = words;
+    return words;
+  }
+
+  static Future<List<Map<String, Object?>>> _queryTokens(
+      Database db, List<String> tokens) async {
     if (tokens.isEmpty) return [];
     final clauses = <String>[], args = <Object?>[];
     for (final token in tokens) {
@@ -408,6 +426,21 @@ class NextCargoTariffService {
         where: clauses.join(' AND '),
         whereArgs: args,
         limit: util.kMaxTariffMatches);
+  }
+
+  static Future<List<Map<String, Object?>>> findDestination(
+      String query) async {
+    final db = await open();
+    final tokens = util.destinationTokens(query);
+    if (tokens.isEmpty) return [];
+    final exact = await _queryTokens(db, tokens);
+    if (exact.isNotEmpty) return exact;
+
+    // Kosakata dimuat sekali per versi data; impor dan restore mengosongkan cache.
+    final vocabulary = await _loadDestinationVocabulary(db);
+    final corrected = util.resolveTokens(tokens, vocabulary);
+    if (corrected.join('|') == tokens.join('|')) return [];
+    return _queryTokens(db, corrected);
   }
 }
 
