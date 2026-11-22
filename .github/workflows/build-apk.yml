@@ -59,6 +59,27 @@ jobs:
           flutter create --platforms=android --org com.example --project-name cargo_voice_agent_offline .
           rm -f android/app/build.gradle.kts test/widget_test.dart
 
+      - name: Configure permanent release signing when secrets are available
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${ANDROID_KEYSTORE_BASE64}" && -n "${ANDROID_KEY_ALIAS}" && -n "${ANDROID_KEY_PASSWORD}" && -n "${ANDROID_STORE_PASSWORD}" ]]; then
+            echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release-key.jks
+            cat > android/key.properties <<EOF
+          storeFile=app/release-key.jks
+          keyAlias=${ANDROID_KEY_ALIAS}
+          keyPassword=${ANDROID_KEY_PASSWORD}
+          storePassword=${ANDROID_STORE_PASSWORD}
+          EOF
+            echo "Permanent release keystore configured."
+          else
+            echo "::warning::Permanent signing secrets are incomplete; using the temporary debug key. APK updates may not install over previous releases."
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
