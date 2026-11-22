@@ -78,6 +78,14 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Diagnose legacy Android embedding references
+        run: |
+          set +e
+          echo "Scanning Android project and resolved plugin sources for removed v1 embedding APIs..."
+          grep -RInE 'io\.flutter\.app\.(FlutterActivity|FlutterApplication)|PluginRegistry\.Registrar|registerWith\(' android "$HOME/.pub-cache/hosted/pub.dev" 2>/dev/null | head -200 || true
+          echo "Resolved Flutter plugins:"
+          flutter pub deps --style=compact | head -100
+
       - name: Build release APK
         run: flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
 
