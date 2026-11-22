@@ -92,6 +92,16 @@ class NextCargoTariffService {
   static Database? _db;
   static Set<String>? _destinationVocabulary;
 
+  /// Mengisolasi database antar pengujian integrasi tanpa memengaruhi aplikasi.
+  static Future<void> resetForTesting() async {
+    final db = _db;
+    _db = null;
+    _destinationVocabulary = null;
+    if (db != null && db.isOpen) await db.close();
+    final root = await getDatabasesPath();
+    await deleteDatabase(p.join(root, 'next_cargo_tariffs.db'));
+  }
+
   static Future<Database> open() async {
     if (_db != null) return _db!;
     final root = await getDatabasesPath();
