@@ -23,7 +23,7 @@ Asisten suara (Speech-to-Text & Text-to-Speech) untuk menghitung ongkir **NEXT C
 Tanpa paket tersebut, aplikasi akan menampilkan pesan error.
 
 ## Build APK
-**Lewat GitHub Actions:** push ke branch `main` (atau jalankan manual di tab Actions), lalu unduh APK dari halaman **Releases** (tag `build-<nomor>-<percobaan>`).
+**Lewat GitHub Actions:** push ke branch `main` (atau jalankan manual di tab Actions), lalu unduh APK dari halaman **Releases** (tag `cargo-build-<nomor-run>-<percobaan>`).
 
 **Lokal:**
 ```bash
@@ -40,5 +40,5 @@ flutter build apk --release
 - `lib/fare_manager_page.dart`, `lib/main.dart`: UI.
 
 ## Catatan
-- Package name masih `com.example.cargo_voice_agent_offline` dan rilis ditandatangani dengan kunci debug. Ganti keduanya sebelum rilis ke Play Store.
+- Namespace Android adalah `com.example.cargo_voice_agent_offline`, sedangkan `applicationId` tetap `com.example.lrt_voice_agent_offline` untuk mempertahankan identitas instalasi aplikasi. Versi Android mengikuti `version` pada `pubspec.yaml`. Rilis saat ini masih ditandatangani dengan kunci debug sementara; tanda tangan akan berubah antar-run GitHub dan APK tidak dapat dipasang sebagai pembaruan tanpa keystore tetap. Jangan uninstall aplikasi lama sebelum identitas dan tanda tangan rilis dipastikan cocok.
 - Folder `ios/` hanya berisi `Info.plist`. Jalankan `flutter create --platforms=ios .` bila ingin membangun untuk iOS.
