@@ -65,6 +65,55 @@ num billableWeight(num actualWeight, num serviceMinimum) =>
 /// Jumlah maksimum tujuan yang dikembalikan pencarian.
 const int kMaxTariffMatches = 8;
 
+
+/// Mengubah bilangan bulat ke ucapan bahasa Indonesia untuk TTS.
+String _indonesianIntegerWords(int value) {
+  const units = [
+    'nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh',
+    'delapan', 'sembilan', 'sepuluh', 'sebelas'
+  ];
+  if (value < 0) return 'minus ${_indonesianIntegerWords(-value)}';
+  if (value < 12) return units[value];
+  if (value < 20) return '${_indonesianIntegerWords(value - 10)} belas';
+  if (value < 100) {
+    final tens = value ~/ 10;
+    final rest = value % 10;
+    return '${_indonesianIntegerWords(tens)} puluh${rest == 0 ? '' : ' ${_indonesianIntegerWords(rest)}'}';
+  }
+  if (value < 200) return 'seratus${value == 100 ? '' : ' ${_indonesianIntegerWords(value - 100)}'}';
+  if (value < 1000) {
+    final hundreds = value ~/ 100;
+    final rest = value % 100;
+    return '${_indonesianIntegerWords(hundreds)} ratus${rest == 0 ? '' : ' ${_indonesianIntegerWords(rest)}'}';
+  }
+  for (final scale in [1000000000, 1000000, 1000]) {
+    if (value >= scale) {
+      final count = value ~/ scale;
+      final rest = value % scale;
+      final label = scale == 1000000000 ? 'miliar' : scale == 1000000 ? 'juta' : 'ribu';
+      final prefix = scale == 1000 && count == 1
+          ? 'seribu'
+          : '${_indonesianIntegerWords(count)} $label';
+      return '$prefix${rest == 0 ? '' : ' ${_indonesianIntegerWords(rest)}'}';
+    }
+  }
+  return value.toString();
+}
+
+/// Menyiapkan teks khusus untuk TTS tanpa mengubah teks yang tampil di chat.
+String spokenVersion(String text) {
+  var result = text.replaceAllMapped(RegExp(r'Rp\\s*([0-9.]+)'), (match) {
+    final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
+    return amount == null ? match.group(0)! : '${_indonesianIntegerWords(amount)} rupiah';
+  });
+  return result
+      .replaceAll('×', ' kali ')
+      .replaceAll('/kg', ' per kilogram')
+      .replaceAll('kg', 'kilogram')
+      .replaceAll(RegExp(r'\\s+'), ' ')
+      .trim();
+}
+
 /// Bilangan Indonesia yang umum dipakai saat menyebut berat.
 const Map<String, int> _smallNumbers = {
   'nol': 0, 'kosong': 0, 'satu': 1, 'se': 1, 'dua': 2, 'tiga': 3,
