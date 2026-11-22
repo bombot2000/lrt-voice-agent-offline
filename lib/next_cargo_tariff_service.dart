@@ -356,7 +356,14 @@ class NextCargoTariffService {
       await txn.delete('tariff_backup');
       await txn.execute(
           'INSERT INTO tariff_backup (id,${cols.join(',')}) SELECT id,${cols.join(',')} FROM tariffs');
-      await txn.update('tariff_backup_meta', {'available': 1}, where: 'id = 1');
+      final previousCount = Sqflite.firstIntValue(
+            await txn.rawQuery('SELECT COUNT(*) AS n FROM tariff_backup')) ??
+          0;
+      await txn.update(
+        'tariff_backup_meta',
+        {'available': previousCount > 0 ? 1 : 0},
+        where: 'id = 1',
+      );
       if (replace) await txn.delete('tariffs');
       var batch = txn.batch();
       var pending = 0;
@@ -435,6 +442,7 @@ class NextCargoTariffService {
         columns: cols,
         where: clauses.join(' AND '),
         whereArgs: args,
+        orderBy: 'province ASC, city ASC, district ASC, village ASC',
         limit: util.kMaxTariffMatches);
   }
 
