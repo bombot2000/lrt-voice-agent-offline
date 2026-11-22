@@ -99,6 +99,11 @@ jobs:
               fi
             done
             cp -a /tmp/cargo-android-scaffold/android/gradle/wrapper android/gradle/
+            # Restore only the standard Android resource set required by the existing manifest.
+            mkdir -p android/app/src/main/res
+            if [ -d /tmp/cargo-android-scaffold/android/app/src/main/res ]; then
+              cp -a /tmp/cargo-android-scaffold/android/app/src/main/res/. android/app/src/main/res/
+            fi
             chmod +x android/gradlew
           fi
           if [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; then
