@@ -46,6 +46,8 @@ void main() {
     expect(destinationTokens('Tolong ongkir ke Abiansemal Badung 20 kilo reguler'),
         equals(['ABIANSEMAL', 'BADUNG']));
     expect(destinationTokens('selamat pagi'), equals(<String>[]));
+    expect(destinationTokens('Kabupaten Blitar'), ['KABUPATEN', 'BLITAR']);
+    expect(destinationTokens('Kota Blitar'), ['KOTA', 'BLITAR']);
   });
 
   group('berat terbilang dan token tujuan', () {
@@ -53,6 +55,10 @@ void main() {
       expect(parseWeight('lima belas kilo'), 15);
       expect(parseWeight('dua puluh lima koma lima kg'), 25.5);
       expect(parseWeight('seratus kilo'), 100);
+      expect(parseWeight('seratus dua puluh kilo'), 120);
+      expect(parseWeight('dua ratus lima puluh kilo'), 250);
+      expect(parseWeight('dua ribu tiga ratus empat puluh kilo'), 2340);
+      expect(parseWeight('2.500 kg'), 2.5);
       expect(parseWeight('seribu lima ratus kilo'), 1500);
     });
 
