@@ -70,7 +70,7 @@ class AnswerEngine {
 
   Future<Reply> ask(String query) async {
     if (_pending.isNotEmpty) {
-      final followUp = _narrow(query);
+      final followUp = await _narrow(query);
       if (followUp != null) return followUp;
       reset(); // Bukan jawaban atas pertanyaan sebelumnya: mulai baru.
     }
@@ -106,16 +106,14 @@ class AnswerEngine {
 
   /// Mempersempit kandidat dengan kata baru. Null bila kata baru tidak cocok
   /// dengan satu pun kandidat (berarti ini pertanyaan baru).
-  Reply? _narrow(String query) {
+  Future<Reply?> _narrow(String query) async {
     final tokens = destinationTokens(query);
     if (tokens.isEmpty) return null;
-    final narrowed = _pending.where((r) {
-      final text = _destinationOf(r).toUpperCase();
-      return tokens.every(text.contains);
-    }).toList();
+    final combined = '$_pendingQuery $query';
+    // Cari ulang seluruh database: _pending hanya memuat maksimal 8 pilihan UI.
+    final narrowed = await tariffs.find(combined);
     if (narrowed.isEmpty) return null;
 
-    final combined = '$_pendingQuery $query';
     if (narrowed.length == 1) {
       reset();
       return Reply(buildFareAnswer(combined, narrowed.first));
@@ -194,6 +192,10 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     if (requested != null && requestedMinimum != null && requestedMinimum > weight) {
       minimumNotice =
           '$requested belum berlaku karena minimum ${formatPlainNumber(requestedMinimum)} kg; digunakan layanan dengan minimum yang sudah terpenuhi.';
+    } else if (requested != null && eligible.isNotEmpty &&
+        eligible.first.label != requested) {
+      minimumNotice =
+          'Berat memenuhi minimum ${eligible.first.label}, memakai tarif ${eligible.first.label}.';
     }
 
     // Berat aktual menentukan satu kelompok tertinggi yang sudah memenuhi
@@ -244,8 +246,9 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     }
   }
 
-  if (lines.isEmpty && requested != null) {
-    return 'Tarif $requested tidak tersedia untuk tujuan $destination.';
+  if (lines.isEmpty) {
+    final unavailable = requested ?? selectedService ?? 'Reguler';
+    return 'Tarif $unavailable tidak tersedia untuk tujuan $destination. Data minimum atau tarif layanan belum lengkap.';
   }
 
   final prefix = weight == null
