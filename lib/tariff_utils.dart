@@ -275,9 +275,11 @@ String formatTypedReply(String text) {
   final serviceLines = <String>[];
   final notes = <String>[];
   for (final detail in sentences.skip(1)) {
-    final service = RegExp(r'^(Reguler|SP1|SP2|SP3|Tarif khusus):\s*(.+)').firstMatch(detail);
+    final service = RegExp(r'^(Reguler|SP1|SP2|SP3):\s*(.+)').firstMatch(detail);
     if (service != null) {
       serviceLines.add('${service.group(1)}: ${service.group(2)}');
+    } else if (detail.startsWith('Tarif khusus ')) {
+      serviceLines.add(detail);
     } else {
       notes.add(detail);
     }
