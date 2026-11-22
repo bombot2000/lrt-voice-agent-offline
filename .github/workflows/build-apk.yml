@@ -1,4 +1,4 @@
-name: Activate Cargo Voice Agent Build 54
+name: Build Cargo Voice Agent APK
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract uploaded Build 54 when archive is present
+      - name: Extract uploaded source archive when present
         run: |
           set -euo pipefail
           ARCHIVE="cargo-voice-agent-offline-build-54-preserve-package.zip"
@@ -33,14 +33,14 @@ jobs:
             echo "Archive absent; build current repository sources."
           fi
 
-      - name: Commit extracted Build 54 sources to main
+      - name: Commit extracted source files to main
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "Replace LRT app with NEXT Cargo Voice Agent Build 54 [skip ci]"
+            git commit -m "Update NEXT Cargo Voice Agent sources [skip ci]"
             git push origin HEAD:main
           fi
 
@@ -75,7 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="cargo-build-54-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          TAG="cargo-build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
             --title "NEXT Cargo Voice Agent APK" \
-            --notes "Build 54. Analyze dan test dijalankan pada commit ${GITHUB_SHA}. Tanda tangan debug; cocokkan sertifikat sebelum memasang sebagai pembaruan. Jangan uninstall aplikasi lama."
+            --notes "Analyze dan test dijalankan pada commit ${GITHUB_SHA}. Tanda tangan debug; cocokkan sertifikat sebelum memasang sebagai pembaruan. Jangan uninstall aplikasi lama."
