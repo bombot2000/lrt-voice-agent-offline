@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:excel/excel.dart' as xls;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:cargo_voice_agent_offline/next_cargo_tariff_service.dart';
 
 void main() {
@@ -129,4 +130,39 @@ void main() {
       );
     });
   });
+  test('SQLite fuzzy lookup and vocabulary cache invalidation on import/restore', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final original = await NextCargoTariffService.parse(
+      'original.csv',
+      bytes('$header\\n$row'),
+    );
+    await NextCargoTariffService.importParsed(original, replace: true);
+
+    var found = await NextCargoTariffService.findDestination('ABIANSEMEL');
+    expect(found, isNotEmpty);
+    expect(found.first['district'], 'ABIANSEMAL');
+
+    final replacementRow = row
+        .replaceFirst('BALI,BADUNG,ABIANSEMAL,ABIANSEMAL', 'JAWA TIMUR,KOTA MALANG,DENPASAR,DENPASAR');
+    final replacement = await NextCargoTariffService.parse(
+      'replacement.csv',
+      bytes('$header\\n$replacementRow'),
+    );
+    await NextCargoTariffService.importParsed(replacement, replace: true);
+
+    found = await NextCargoTariffService.findDestination('DENPASAAR');
+    expect(found, isNotEmpty);
+    expect(found.first['district'], 'DENPASAR');
+
+    expect(await NextCargoTariffService.restore(), isTrue);
+    found = await NextCargoTariffService.findDestination('ABIANSEMEL');
+    expect(found, isNotEmpty);
+    expect(found.first['district'], 'ABIANSEMAL');
+    expect(await NextCargoTariffService.findDestination('DENPASAAR'), isEmpty);
+  });
+
 }
