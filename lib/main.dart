@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
 import 'next_cargo_tariff_service.dart';
-import 'tariff_utils.dart' show spokenVersion;
+import 'tariff_utils.dart' show formatTypedReply, spokenVersion;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -287,7 +287,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   void _showReply(String userText, Reply reply, {required bool speak}) {
     setState(() {
       _messages.add({'role': 'user', 'text': userText});
-      _messages.add({'role': 'agent', 'text': reply.text});
+      _messages.add({\n        'role': 'agent',\n        'text': speak ? reply.text : formatTypedReply(reply.text),\n      });
       _choices = reply.choices;
       _statusText = _defaultStatus;
     });
