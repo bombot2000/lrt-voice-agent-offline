@@ -111,7 +111,21 @@ jobs:
           echo "Android Gradle scaffold and v2 embedding metadata are present."
 
       - name: Build release APK
-        run: flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+        run: |
+          set -euo pipefail
+          # Maven Central may temporarily rate-limit hosted runners (HTTP 429).
+          # Retry with backoff; keep the same unsigned build configuration.
+          for attempt in 1 2 3 4; do
+            echo "APK build attempt $attempt/4"
+            if flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "APK build failed after 4 attempts." >&2
+              exit 1
+            fi
+            sleep $((attempt * 30))
+          done
 
       - name: Locate unsigned release APK
         id: apk
