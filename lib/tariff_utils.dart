@@ -283,14 +283,15 @@ String formatTypedReply(String text) {
   final serviceLines = <String>[];
   final notes = <String>[];
   for (final rawDetail in sentences.skip(1)) {
-    final detail = rawDetail.replaceFirst(RegExp(r'[.!?]+$'), '').trim();
+    final originalDetail = rawDetail.trim();
+    final detail = originalDetail.replaceFirst(RegExp(r'[.!?]+$'), '').trim();
     final service = RegExp(r'^(Reguler|SP1|SP2|SP3):\s*(.+)').firstMatch(detail);
     if (service != null) {
-      serviceLines.add('${service.group(1)}: ${service.group(2)}');
+      serviceLines.add('\${service.group(1)}: \${service.group(2)}');
     } else if (detail.startsWith('Tarif khusus ')) {
       serviceLines.add(detail);
     } else {
-      notes.add(detail);
+      notes.add(originalDetail);
     }
   }
   if (notes.isNotEmpty) {
