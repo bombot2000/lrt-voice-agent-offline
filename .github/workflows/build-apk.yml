@@ -1,4 +1,4 @@
-name: Build Cargo Voice Agent APK
+name: Build Cargo Voice Agent APK (Signed)
 
 on:
   push:
@@ -30,6 +30,7 @@ jobs:
             rsync -a --delete \
               --exclude='.git/' \
               --exclude='.github/workflows/build-apk.yml' \
+              --exclude='android/app/build.gradle' \
               --exclude='android/key.properties' \
               --exclude='android/app/*.jks' \
               --exclude='android/app/*.keystore' \
@@ -41,12 +42,23 @@ jobs:
             echo "Archive absent; build current repository sources."
           fi
 
-      - name: Verify application identity
+      - name: Verify application identity and signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
           set -euo pipefail
           grep -Eq 'applicationId[[:space:]]*=[[:space:]]*"com\.example\.lrt_voice_agent_offline"' android/app/build.gradle
           grep -q '^name: cargo_voice_agent_offline$' pubspec.yaml
-          echo "Application ID and Flutter project identity verified."
+          for name in KEYSTORE_BASE64 KEY_ALIAS KEY_PASSWORD STORE_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::GitHub Secret untuk signing belum lengkap: ${name}"
+              exit 1
+            fi
+          done
+          echo "Identitas aplikasi dan semua secret signing tersedia."
 
       - name: Commit extracted source files to main
         run: |
@@ -69,6 +81,24 @@ jobs:
           flutter-version: '3.38.0'
           cache: true
 
+      - name: Configure permanent Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+          test -s android/app/release-key.jks
+          cat > android/key.properties <<EOF
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=release-key.jks
+          EOF
+          chmod 600 android/key.properties android/app/release-key.jks
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -81,16 +111,13 @@ jobs:
       - name: Diagnose legacy Android embedding references
         run: |
           set +e
-          echo "Scanning Android project and resolved plugin sources for removed v1 embedding APIs..."
           grep -RInE 'io\.flutter\.app\.(FlutterActivity|FlutterApplication)|PluginRegistry\.Registrar|registerWith\(' android "$HOME/.pub-cache/hosted/pub.dev" 2>/dev/null | head -200 || true
-          echo "Resolved Flutter plugins:"
           flutter pub deps --style=compact | head -100
 
       - name: Generate missing Android Gradle scaffold safely
         run: |
           set -euo pipefail
           if [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ] || [ ! -f android/gradlew ] || [ ! -d android/gradle/wrapper ]; then
-            echo "Android Gradle scaffold is incomplete; generating a clean Flutter Android scaffold."
             flutter create --platforms=android --project-name=cargo_voice_agent_offline --org=com.example /tmp/cargo-android-scaffold
             mkdir -p android/gradle
             for file in settings.gradle settings.gradle.kts build.gradle build.gradle.kts gradle.properties gradlew gradlew.bat; do
@@ -99,54 +126,44 @@ jobs:
               fi
             done
             cp -a /tmp/cargo-android-scaffold/android/gradle/wrapper android/gradle/
-            # Restore only the standard Android resource set required by the existing manifest.
             mkdir -p android/app/src/main/res
             if [ -d /tmp/cargo-android-scaffold/android/app/src/main/res ]; then
               cp -a /tmp/cargo-android-scaffold/android/app/src/main/res/. android/app/src/main/res/
             fi
             chmod +x android/gradlew
           fi
-          if [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; then
-            echo "Missing Gradle settings file (Groovy or Kotlin DSL)." >&2
-            exit 1
-          fi
           test -f android/gradlew
           test -f android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
-          echo "Android Gradle scaffold and v2 embedding metadata are present."
 
-      - name: Build release APK
+      - name: Build signed release APK
         run: |
           set -euo pipefail
-          # Maven Central may temporarily rate-limit hosted runners (HTTP 429).
-          # Retry with backoff; keep the same unsigned build configuration.
           for attempt in 1 2 3 4; do
-            echo "APK build attempt $attempt/4"
             if flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"; then
               exit 0
             fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "APK build failed after 4 attempts." >&2
-              exit 1
-            fi
+            if [ "$attempt" -eq 4 ]; then exit 1; fi
             sleep $((attempt * 30))
           done
 
-      - name: Locate unsigned release APK
+      - name: Verify APK signature
         id: apk
         run: |
           set -euo pipefail
-          APK="$(find build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*.apk' | head -n 1)"
-          test -n "$APK"
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$APK"
+          jarsigner -verify -verbose -certs "$APK" >/tmp/apk-signature-check.txt
+          grep -q 'jar verified' /tmp/apk-signature-check.txt
           echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "APK generated: $APK"
+          sha256sum "$APK"
 
-      - name: Publish unsigned APK to GitHub Releases
+      - name: Publish signed APK to GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="cargo-build-unsigned-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          TAG="cargo-build-signed-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" "${{ steps.apk.outputs.path }}" \
-            --title "NEXT Cargo Voice Agent APK (Unsigned)" \
-            --notes "APK release tanpa keystore/signing permanen. Analyze dan test dijalankan pada commit ${GITHUB_SHA}."
+            --title "NEXT Cargo Voice Agent APK (Signed)" \
+            --notes "APK Release bertanda tangan permanen. Application ID: com.example.lrt_voice_agent_offline. Build commit: ${GITHUB_SHA}. Pertahankan keystore yang sama untuk semua pembaruan."
