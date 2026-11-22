@@ -138,7 +138,7 @@ void main() {
 
     final original = await NextCargoTariffService.parse(
       'original.csv',
-      bytes('$header\\n$row'),
+      bytes('$header\n$row'),
     );
     await NextCargoTariffService.importParsed(original, replace: true);
 
@@ -150,7 +150,7 @@ void main() {
         .replaceFirst('BALI,BADUNG,ABIANSEMAL,ABIANSEMAL', 'JAWA TIMUR,KOTA MALANG,DENPASAR,DENPASAR');
     final replacement = await NextCargoTariffService.parse(
       'replacement.csv',
-      bytes('$header\\n$replacementRow'),
+      bytes('$header\n$replacementRow'),
     );
     await NextCargoTariffService.importParsed(replacement, replace: true);
 
