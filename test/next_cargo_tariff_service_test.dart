@@ -174,7 +174,7 @@ void main() {
 
     final original = await NextCargoTariffService.parse(
       'original.csv',
-      bytes('$header\\n$row'),
+      bytes('$header\n$row'),
     );
     await NextCargoTariffService.importParsed(original, replace: true);
     expect(await NextCargoTariffService.count(), 1);
@@ -185,7 +185,7 @@ void main() {
     );
     final addition = await NextCargoTariffService.parse(
       'second.csv',
-      bytes('$header\\n$secondRow'),
+      bytes('$header\n$secondRow'),
     );
     await NextCargoTariffService.importParsed(addition, replace: false);
 
