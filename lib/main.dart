@@ -287,7 +287,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   void _showReply(String userText, Reply reply, {required bool speak}) {
     setState(() {
       _messages.add({'role': 'user', 'text': userText});
-      _messages.add({\n        'role': 'agent',\n        'text': speak ? reply.text : formatTypedReply(reply.text),\n      });
+      _messages.add({
+        'role': 'agent',
+        'text': speak ? reply.text : formatTypedReply(reply.text),
+      });
       _choices = reply.choices;
       _statusText = _defaultStatus;
     });
