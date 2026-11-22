@@ -143,12 +143,7 @@ String _destinationOf(Map<String, Object?> r) =>
 String buildFareAnswer(String query, Map<String, Object?> r) {
   final destination = _destinationOf(r);
 
-  final weightMatch = RegExp(
-    r'(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogram)\b',
-    caseSensitive: false,
-  ).firstMatch(query);
-  final weight =
-      weightMatch == null ? null : parseTariffNumber(weightMatch.group(1));
+  final weight = parseWeight(query);
 
   final lower = query.toLowerCase();
   final wantsSpecial = RegExp(r'\btarif\s+khusus\b|\bkhusus\b').hasMatch(lower);
