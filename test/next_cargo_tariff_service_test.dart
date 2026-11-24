@@ -144,9 +144,14 @@ void main() {
       'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
       'JAWA TENGAH,WONOSOBO,KALIKAJAR,KALIKAJAR',
     );
+    // Nama Wonosobo hanya muncul sebagai kelurahan di kota lain.
+    final incidentalMatch = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KOTA MALANG,DENPASAR,WONOSOBO',
+    );
     final parsed = await NextCargoTariffService.parse(
       'wonosobo.csv',
-      bytes('$header\n$sameName\n$otherDistrict'),
+      bytes('$header\n$sameName\n$otherDistrict\n$incidentalMatch'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
@@ -161,6 +166,19 @@ void main() {
     expect(sameCityDistrict.length, 1);
     expect(sameCityDistrict.single['city'], 'WONOSOBO');
     expect(sameCityDistrict.single['district'], 'WONOSOBO');
+
+    // Penulisan dua nama identik tanpa label kecamatan tetap dipahami
+    // sebagai Kota Wonosobo + Kecamatan Wonosobo.
+    final repeatedName = await NextCargoTariffService.findDestination(
+      'Wonosobo Wonosobo',
+    );
+    expect(repeatedName.length, 1);
+    expect(repeatedName.single['city'], 'WONOSOBO');
+    expect(repeatedName.single['district'], 'WONOSOBO');
+
+    // Pencarian satu kata kota tidak boleh mengambil kota lain hanya
+    // karena nama kelurahannya kebetulan mengandung "Wonosobo".
+    expect(cityOnly.every((r) => r['city'] == 'WONOSOBO'), isTrue);
 
     final explicitLabels = await NextCargoTariffService.findDestination(
       'Kota Wonosobo Kecamatan Kalikajar',
