@@ -549,7 +549,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
           IconButton(
             tooltip: 'Kelola data tarif',
             onPressed: _openFareManager,
-            icon: const Icon(Icons.database_outlined),
+            icon: const Icon(Icons.storage),
           ),
           IconButton(
             tooltip: 'Pengaturan mesin suara',
