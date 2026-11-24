@@ -552,15 +552,23 @@ class NextCargoTariffService {
       );
       // LIKE substring saja akan membuat MALANG cocok dengan PEMALANG.
       // Cocokkan frasa sebagai kata utuh pada kolom city.
-      final cityPattern = RegExp(
-        '(^|\\s)${RegExp.escape(name)}(\\s|$)',
-        caseSensitive: false,
-      );
-      final cityMatches = cityCandidates
-          .where((row) => cityPattern.hasMatch(
-                (row['city'] ?? '').toString().trim(),
-              ))
-          .toList();
+      final normalizedName = name
+          .toUpperCase()
+          .trim()
+          .split(' ')
+          .where((part) => part.isNotEmpty)
+          .join(' ');
+      final cityMatches = cityCandidates.where((row) {
+        final normalizedCity = (row['city'] ?? '')
+            .toString()
+            .toUpperCase()
+            .trim()
+            .split(' ')
+            .where((part) => part.isNotEmpty)
+            .join(' ');
+        // Batas spasi mencegah MALANG cocok dengan PEMALANG.
+        return (' $normalizedCity ').contains(' $normalizedName ');
+      }).toList();
       if (cityMatches.isNotEmpty) {
         return cityMatches
             .map((row) => <String, Object?>{
