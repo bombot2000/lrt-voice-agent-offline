@@ -255,14 +255,46 @@ void main() {
     test('tanpa berat menampilkan minimum dan tarif per kg', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       final a = await engine.answer('tarif ke Abiansemal');
-      expect(a, contains('Reguler: minimum 25 kg, total tarif minimum Rp 117.500; setiap kg berikutnya Rp 4.700/kg.'));
+      expect(a, contains('Reguler 25 kg: 25 kg × Rp 4.700/kg = Rp 117.500; setiap kg berikutnya Rp 4.700/kg.'));
       expect(a, isNot(contains('SP1')));
       expect(a, isNot(contains('SP2')));
       expect(a, isNot(contains('SP3')));
-      expect(a, contains('Tarif khusus Rp 3.400.'));
+      expect(a, isNot(contains('Tarif khusus')));
       expect(a, isNot(contains('Tarif 10 kg'))); // nilai 0 tidak dibacakan
     });
 
+
+    test('Wonosobo default menampilkan tarif 10 kg dan 20 kg tanpa tarif khusus; khusus hanya saat diminta', () async {
+      final row = <String, Object?>{
+        'province': 'JAWA TENGAH',
+        'city': 'WONOSOBO',
+        'district': 'WONOSOBO',
+        'village': 'BOMERTO',
+        'tarif_10kg': '3900',
+        'min_reg': '20',
+        'tarif_reg': '2700',
+        'tarif_khusus': '1950',
+        'min_sp1': '200',
+        'tarif_sp1': '2600',
+        'min_sp2': '500',
+        'tarif_sp2': '2450',
+        'min_sp3': '1000',
+        'tarif_sp3': '2300',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+
+      final regular = await engine.answer('Wonosobo Wonosobo');
+      expect(regular, contains('Tarif 10 kg Rp 3.900.'));
+      expect(regular, contains('Reguler 20 kg: 20 kg × Rp 2.700/kg = Rp 54.000'));
+      expect(regular, isNot(contains('Tarif khusus')));
+      expect(regular, isNot(contains('Rp 1.950')));
+
+      final special = await engine.answer('Wonosobo Wonosobo tarif khusus');
+      expect(special, contains('Tarif khusus: minimum Reguler 20 kg'));
+      expect(special, contains('20 kg × Rp 1.950/kg = Rp 39.000'));
+      expect(special, isNot(contains('Tarif 10 kg')));
+      expect(special, isNot(contains('Reguler 20 kg:')));
+    });
 
     test('tarif tujuan tanpa berat memakai Reguler dan menampilkan total minimum', () async {
       final row = <String, Object?>{
@@ -272,7 +304,7 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('tarif ke Bekasi Jati Asih');
-      expect(a, contains('Reguler: minimum 20 kg, total tarif minimum Rp 62.000; setiap kg berikutnya Rp 3.100/kg.'));
+      expect(a, contains('Reguler 20 kg: 20 kg × Rp 3.100/kg = Rp 62.000; setiap kg berikutnya Rp 3.100/kg.'));
       expect(a, isNot(contains('SP1')));
       expect(a, isNot(contains('SP2')));
       expect(a, isNot(contains('SP3')));
