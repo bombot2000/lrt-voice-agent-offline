@@ -46,6 +46,44 @@ void main() {
   ));
 }
 
+/// Menonjolkan nominal hasil perhitungan tanpa mengubah teks jawaban engine.
+TextSpan _formatCargoMessage(String message, {required bool isUser}) {
+  final baseColor =
+      isUser ? Colors.white : const Color(0xFF252525);
+  final totalPattern = RegExp(r'= (Rp [0-9.]+)');
+  final matches = totalPattern.allMatches(message).toList();
+  if (isUser || matches.isEmpty) {
+    return TextSpan(
+      text: message,
+      style: TextStyle(color: baseColor, fontSize: 14.5, height: 1.45),
+    );
+  }
+
+  final spans = <InlineSpan>[];
+  var cursor = 0;
+  for (final match in matches) {
+    if (match.start > cursor) {
+      spans.add(TextSpan(text: message.substring(cursor, match.start)));
+    }
+    spans.add(TextSpan(
+      text: match.group(1),
+      style: const TextStyle(
+        color: Color(0xFFB71C1C),
+        fontWeight: FontWeight.w800,
+        fontSize: 15.5,
+      ),
+    ));
+    cursor = match.end;
+  }
+  if (cursor < message.length) {
+    spans.add(TextSpan(text: message.substring(cursor)));
+  }
+  return TextSpan(
+    style: TextStyle(color: baseColor, fontSize: 14.5, height: 1.5),
+    children: spans,
+  );
+}
+
 class CargoVoiceAgentPage extends StatefulWidget {
   const CargoVoiceAgentPage({super.key});
 
@@ -676,13 +714,12 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                               ),
                             ],
                           ),
-                          child: Text(
-                            msg['text'] ?? '',
-                            style: TextStyle(
-                              color: isUser ? Colors.white : const Color(0xFF252525),
-                              fontSize: 14.5,
-                              height: 1.45,
+                          child: Text.rich(
+                            _formatCargoMessage(
+                              msg['text'] ?? '',
+                              isUser: isUser,
                             ),
+                            textAlign: TextAlign.start,
                           ),
                         ),
                       ),
