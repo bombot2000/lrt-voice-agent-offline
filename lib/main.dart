@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
+import 'offline_asr_service.dart';
 import 'next_cargo_tariff_service.dart';
 import 'tariff_utils.dart' show formatTypedReply, spokenVersion;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -28,6 +30,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   static const String _listeningStatus = 'Mendengarkan...';
 
   final stt.SpeechToText _speech = stt.SpeechToText();
+  final OfflineAsrService _offlineAsr = OfflineAsrService();
+  Timer? _offlineRecordTimer;
+  bool _useOfflineAsr = false;
+  bool _localRecording = false;
   final FlutterTts _tts = FlutterTts();
   final ScrollController _scrollController = ScrollController();
   final AnswerEngine _engine = AnswerEngine(const SqliteTariffLookup());
@@ -174,10 +180,161 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     });
   }
 
+  Future<void> _openAsrSettings() async {
+    var installed = await _offlineAsr.isModelInstalled;
+    var downloading = false;
+    var progress = 0.0;
+    String? downloadError;
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Mesin Suara Offline'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Whisper Tiny multilingual INT8 berjalan langsung di HP. '
+                'Model sekitar 104 MB, diunduh satu kali dan disimpan di penyimpanan aplikasi.',
+              ),
+              const SizedBox(height: 12),
+              Text(installed
+                  ? 'Model sudah terpasang dan siap digunakan.'
+                  : 'Model belum diunduh. Mode suara bawaan tetap tersedia.'),
+              if (downloading) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(value: progress == 0 ? null : progress),
+                const SizedBox(height: 6),
+                Text('${(progress * 100).toStringAsFixed(0)}%'),
+              ],
+              if (downloadError != null) ...[
+                const SizedBox(height: 8),
+                Text(downloadError!, style: const TextStyle(color: Colors.red)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: downloading ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Tutup'),
+            ),
+            if (!installed)
+              FilledButton(
+                onPressed: downloading
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          downloading = true;
+                          progress = 0;
+                          downloadError = null;
+                        });
+                        try {
+                          await _offlineAsr.downloadModel(
+                            onProgress: (received, total) {
+                              if (!dialogContext.mounted) return;
+                              setDialogState(() {
+                                progress = total == 0 ? 0 : received / total;
+                              });
+                            },
+                          );
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            installed = true;
+                            downloading = false;
+                            progress = 1;
+                          });
+                        } catch (e) {
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            downloading = false;
+                            downloadError = 'Unduhan gagal: $e';
+                          });
+                        }
+                      },
+                child: const Text('Unduh ±104 MB'),
+              ),
+            if (installed)
+              FilledButton(
+                onPressed: () {
+                  if (!mounted) return;
+                  setState(() => _useOfflineAsr = true);
+                  Navigator.pop(dialogContext);
+                  _setStatus('Mode suara Whisper offline aktif.');
+                },
+                child: const Text('Aktifkan suara lokal'),
+              ),
+            if (_useOfflineAsr)
+              TextButton(
+                onPressed: () {
+                  if (!mounted) return;
+                  setState(() => _useOfflineAsr = false);
+                  Navigator.pop(dialogContext);
+                  _setStatus(_defaultStatus);
+                },
+                child: const Text('Gunakan suara bawaan'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleOfflineListening() async {
+    if (_localRecording) {
+      await _finishOfflineRecording();
+      return;
+    }
+    try {
+      await _offlineAsr.startRecording();
+      if (!mounted) return;
+      setState(() {
+        _localRecording = true;
+        _isListening = true;
+        _statusText = 'Mendengarkan offline... tekan mikrofon untuk selesai';
+      });
+      _offlineRecordTimer?.cancel();
+      _offlineRecordTimer = Timer(const Duration(seconds: 25), () {
+        if (mounted && _localRecording) _finishOfflineRecording();
+      });
+    } catch (e) {
+      _setStatus('Gagal memulai suara lokal: $e');
+    }
+  }
+
+  Future<void> _finishOfflineRecording() async {
+    _offlineRecordTimer?.cancel();
+    if (!_localRecording) return;
+    setState(() {
+      _localRecording = false;
+      _isListening = false;
+      _statusText = 'Memproses suara secara offline...';
+    });
+    try {
+      final transcript = await _offlineAsr.stopAndTranscribe();
+      if (!mounted) return;
+      if (transcript.trim().isEmpty) {
+        _setStatus('Suara belum tertangkap jelas. Coba bicara lebih dekat ke mikrofon.');
+        return;
+      }
+      _setStatus(transcript);
+      await _handleQuery(transcript.trim(), speak: true);
+    } catch (e) {
+      _setStatus('Pengenalan suara lokal gagal: $e');
+    }
+  }
+
   Future<void> _toggleListening() async {
     if (_isSpeaking) {
       await _tts.stop();
       if (mounted) setState(() => _isSpeaking = false);
+    }
+
+    if (_useOfflineAsr) {
+      await _toggleOfflineListening();
+      return;
     }
 
     if (_isListening) {
@@ -319,6 +476,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
   @override
   void dispose() {
+    _offlineRecordTimer?.cancel();
+    _offlineAsr.dispose();
     _speech.cancel();
     _tts.stop();
     _scrollController.dispose();
@@ -338,6 +497,11 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
             tooltip: 'Kelola Data Ongkir',
             onPressed: _openFareManager,
             icon: const Icon(Icons.price_change),
+          ),
+          IconButton(
+            tooltip: 'Mesin Suara Offline',
+            onPressed: _openAsrSettings,
+            icon: Icon(_useOfflineAsr ? Icons.record_voice_over : Icons.settings_voice),
           ),
         ],
         backgroundColor: const Color(0xFFD32F2F),
