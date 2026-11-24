@@ -143,10 +143,10 @@ void main() {
     final csvRows = districts.map((district) => row.replaceFirst(
       'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
       'JAWA TIMUR,KABUPATEN MALANG,$district,$district',
-    )).join('\\n');
+    )).join('\n');
     final parsed = await NextCargoTariffService.parse(
       'malang.csv',
-      bytes('$header\\n$csvRows'),
+      bytes('$header\n$csvRows'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
