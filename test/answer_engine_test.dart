@@ -390,6 +390,19 @@ void main() {
       expect(engine.hasPendingChoice, false);
     });
 
+    test('setelah pilihan diketuk, pertanyaan baru tidak memakai tujuan lama', () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      final first = await engine.ask('ongkir ke Abiansemal 20 kilo');
+      final selected = engine.select(first.choices.last);
+      expect(selected.text, contains('SIBANG KAJA'));
+      expect(engine.hasPendingChoice, false);
+
+      final next = await engine.ask('ongkir ke Atlantis 5 kg');
+      expect(next.text, contains('tersedia untuk 2 tujuan'));
+      expect(next.choices, isEmpty);
+      expect(engine.hasPendingChoice, false);
+    });
+
     test('menyebut kelurahan saja sudah cukup, berat tidak perlu diulang',
         () async {
       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
