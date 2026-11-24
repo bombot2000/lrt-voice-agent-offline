@@ -553,7 +553,7 @@ class NextCargoTariffService {
       // LIKE substring saja akan membuat MALANG cocok dengan PEMALANG.
       // Cocokkan frasa sebagai kata utuh pada kolom city.
       final cityPattern = RegExp(
-        '(^|\\\\s)${RegExp.escape(name)}(\\\\s|$)',
+        '(^|\\s)${RegExp.escape(name)}(\\s|$)',
         caseSensitive: false,
       );
       final cityMatches = cityCandidates
