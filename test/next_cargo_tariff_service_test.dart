@@ -143,7 +143,10 @@ void main() {
     final csvRows = districts.map((district) => row.replaceFirst(
       'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
       'JAWA TIMUR,KABUPATEN MALANG,$district,$district',
-    )).join('\n');
+    )).join('\n') + '\n' + row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TENGAH,KABUPATEN PEMALANG,PEMALANG,PEMALANG',
+    );
     final parsed = await NextCargoTariffService.parse(
       'malang.csv',
       bytes('$header\n$csvRows'),
@@ -153,6 +156,9 @@ void main() {
     final found = await NextCargoTariffService.findDestination('Malang');
     expect(found.length, districts.length);
     expect(found.map((item) => item['district']).toSet(), districts.toSet());
+    expect(found.every((item) =>
+      !(item['city'] ?? '').toString().contains('PEMALANG'),
+    ), isTrue);
     expect(found.every((item) => item['_suggestion_level'] == 'district'), isTrue);
   });
 
