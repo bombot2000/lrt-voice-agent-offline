@@ -522,7 +522,16 @@ class NextCargoTariffService {
   static Future<List<Map<String, Object?>>> findDestination(
       String query) async {
     final db = await open();
-    final tokens = util.destinationTokens(query);
+    var tokens = util.destinationTokens(query);
+    // MALANG biasanya diabaikan karena merupakan kota asal default aplikasi.
+    // Namun jika menjadi satu-satunya nama wilayah yang disebut, perlakukan
+    // sebagai kota tujuan agar semua kecamatannya dapat disarankan.
+    if (tokens.isEmpty &&
+        RegExp(r'\\bmalang\\b', caseSensitive: false).hasMatch(query) &&
+        !RegExp(r'\\b(?:dari|asal)\\s+malang\\b', caseSensitive: false)
+            .hasMatch(query)) {
+      tokens = ['MALANG'];
+    }
     final scope = _scopedAddress(query);
     if (tokens.isEmpty && scope.city == null && scope.district == null) return [];
 
