@@ -432,9 +432,9 @@ class NextCargoTariffService {
   /// "ongkir ke Wonosobo kec Wonosobo 20 kg" menghasilkan
   /// city=WONOSOBO dan district=WONOSOBO, bukan satu token yang ambigu.
   static ({String? city, String? district}) _scopedAddress(String query) {
-    final text = query.toLowerCase().replaceAll(RegExp(r'[,;]'), ' ').replaceAll(RegExp(r'\\s+'), ' ').trim();
+    final text = query.toLowerCase().replaceAll(RegExp(r'[,;]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
     final districtMatch = RegExp(
-      r'\\b(?:kec(?:amatan)?|kec\\.)\\s+(.+?)(?=\\s+\\d|\\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\\b|$)',
+      r'\b(?:kec(?:amatan)?|kec\.)\s+(.+?)(?=\s+\d|\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\b|$)',
     ).firstMatch(text);
 
     String? district;
@@ -442,25 +442,25 @@ class NextCargoTariffService {
     if (districtMatch != null) {
       district = districtMatch.group(1)!.trim();
       var cityPart = text.substring(0, districtMatch.start).trim();
-      final destinationStart = RegExp(r'\\bke\\s+').allMatches(cityPart).toList();
+      final destinationStart = RegExp(r'\bke\s+').allMatches(cityPart).toList();
       if (destinationStart.isNotEmpty) {
         cityPart = cityPart.substring(destinationStart.last.end).trim();
       }
       cityPart = cityPart
-          .replaceFirst(RegExp(r'^(?:(?:tolong|mohon|coba|cek|cari|carikan|ongkir|ongkos|tarif|tujuan|kirim|pengiriman)\\s+)+'), '')
-          .replaceFirst(RegExp(r'^(?:kota|kabupaten|kab\\.?|city)\\s+'), '')
+          .replaceFirst(RegExp(r'^(?:(?:tolong|mohon|coba|cek|cari|carikan|ongkir|ongkos|tarif|tujuan|kirim|pengiriman)\s+)+'), '')
+          .replaceFirst(RegExp(r'^(?:kota|kabupaten|kab\.?|city)\s+'), '')
           .trim();
       if (cityPart.isNotEmpty) city = cityPart;
     } else {
       final cityMatch = RegExp(
-        r'\\b(?:kota|kabupaten|kab\\.?)\\s+(.+?)(?=\\s+\\d|\\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\\b|$)',
+        r'\b(?:kota|kabupaten|kab\.?)\s+(.+?)(?=\s+\d|\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\b|$)',
       ).firstMatch(text);
       if (cityMatch != null) city = cityMatch.group(1)!.trim();
     }
 
     String? clean(String? value) {
       if (value == null || value.isEmpty) return null;
-      return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'), '').replaceAll(RegExp(r'\\s+'), ' ').trim();
+      return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
     }
     return (city: clean(city), district: clean(district));
   }
