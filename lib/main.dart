@@ -479,16 +479,21 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   }
 
   Future<void> _handleChoice(Choice choice) async {
+    // Tutup daftar pilihan segera agar ketukan ganda tidak memproses tujuan
+    // yang sama dua kali atau meninggalkan pilihan lama di layar.
+    if (!_choices.contains(choice)) return;
+    setState(() => _choices = const []);
     if (_isSpeaking) await _tts.stop();
+    final selectedLabel = 'Tujuan dipilih: ${choice.label}';
     _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
       try {
         final reply = _engine.select(choice);
         if (!mounted) return;
-        _showReply(choice.label, reply, speak: _voiceMode);
+        _showReply(selectedLabel, reply, speak: _voiceMode);
       } catch (_) {
         if (!mounted) return;
         _showReply(
-          choice.label,
+          selectedLabel,
           const Reply('Pilihan tujuan gagal diproses. Silakan ulangi pertanyaan.'),
           speak: false,
         );
