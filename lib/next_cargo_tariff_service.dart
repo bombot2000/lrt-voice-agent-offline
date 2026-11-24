@@ -530,15 +530,25 @@ class NextCargoTariffService {
     // in other cities' district or village columns.
     if (scope.city == null && scope.district == null && tokens.length == 1) {
       final name = tokens.single;
+      // Untuk input nama kota saja, ambil satu baris per kecamatan,
+      // bukan membatasi delapan kelurahan pertama. Dengan begitu seluruh
+      // kecamatan kota tersebut dapat ditampilkan sebagai saran.
       final cityMatches = await db.query(
         'tariffs',
         columns: cols,
         where: 'UPPER(city) = ?',
         whereArgs: [name],
-        orderBy: 'province ASC, city ASC, district ASC, village ASC',
-        limit: util.kMaxTariffMatches,
+        groupBy: 'province, city, district',
+        orderBy: 'province ASC, city ASC, district ASC',
       );
-      if (cityMatches.isNotEmpty) return cityMatches;
+      if (cityMatches.isNotEmpty) {
+        return cityMatches
+            .map((row) => <String, Object?>{
+                  ...row,
+                  '_suggestion_level': 'district',
+                })
+            .toList();
+      }
 
       final districtMatches = await db.query(
         'tariffs',
