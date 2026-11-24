@@ -803,46 +803,135 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Pilih tujuan yang sesuai',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 13)),
-                          const SizedBox(height: 7),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_searching,
+                                  color: Color(0xFFB71C1C), size: 19),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  'Pilih tujuan (${_choices.length} saran)',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Ketuk kecamatan atau alamat yang paling sesuai.',
+                            style: TextStyle(
+                              color: Color(0xFF777777),
+                              fontSize: 11.5,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
                           ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 132),
+                            constraints: const BoxConstraints(maxHeight: 240),
                             child: SingleChildScrollView(
                               child: Column(
                                 children: [
-                                  for (final c in _choices)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 5),
-                                      child: SizedBox(
-                                        width: double.infinity,
-                                        child: OutlinedButton(
-                                          style: OutlinedButton.styleFrom(
-                                            alignment: Alignment.centerLeft,
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 10),
-                                            foregroundColor: const Color(0xFF8E1717),
-                                            side: const BorderSide(
-                                                color: Color(0xFFE7C4C0)),
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12)),
-                                          ),
-                                          onPressed: () => _handleChoice(c),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.place_outlined, size: 18),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(c.label,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis),
+                                  for (var i = 0; i < _choices.length; i++)
+                                    Builder(
+                                      builder: (context) {
+                                        final c = _choices[i];
+                                        final isDistrict =
+                                            c.row['_suggestion_level'] == 'district';
+                                        final city = (c.row['city'] ?? '')
+                                            .toString().trim();
+                                        final district = (c.row['district'] ?? '')
+                                            .toString().trim();
+                                        final village = (c.row['village'] ?? '')
+                                            .toString().trim();
+                                        final province = (c.row['province'] ?? '')
+                                            .toString().trim();
+                                        final title = isDistrict
+                                            ? (district.isNotEmpty ? district : c.label)
+                                            : (village.isNotEmpty ? village : district);
+                                        final subtitle = isDistrict
+                                            ? [city, province]
+                                                .where((v) => v.isNotEmpty).join(' • ')
+                                            : [district, city, province]
+                                                .where((v) => v.isNotEmpty).toSet().join(' • ');
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 7),
+                                          child: Material(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(12),
+                                              onTap: () => _handleChoice(c),
+                                              child: Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12, vertical: 11),
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                      color: const Color(0xFFE7C4C0)),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 30,
+                                                      height: 30,
+                                                      alignment: Alignment.center,
+                                                      decoration: const BoxDecoration(
+                                                        color: Color(0xFFFFE5E2),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Text(
+                                                        '${i + 1}',
+                                                        style: const TextStyle(
+                                                          color: Color(0xFF9B1C1C),
+                                                          fontWeight: FontWeight.w800,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            title.isEmpty ? c.label : title,
+                                                            maxLines: 2,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.w800,
+                                                              fontSize: 13,
+                                                              color: Color(0xFF292929),
+                                                            ),
+                                                          ),
+                                                          if (subtitle.isNotEmpty) ...[
+                                                            const SizedBox(height: 3),
+                                                            Text(
+                                                              subtitle,
+                                                              maxLines: 2,
+                                                              overflow: TextOverflow.ellipsis,
+                                                              style: const TextStyle(
+                                                                fontSize: 11,
+                                                                color: Color(0xFF777777),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    const Icon(Icons.chevron_right,
+                                                        color: Color(0xFF9B1C1C)),
+                                                  ],
+                                                ),
                                               ),
-                                              const Icon(Icons.chevron_right, size: 18),
-                                            ],
+                                            ),
                                           ),
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     ),
                                 ],
                               ),
