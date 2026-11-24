@@ -542,7 +542,7 @@ class NextCargoTariffService {
       // hanya satu token. GROUP BY harus dilakukan di SQLite sebelum
       // mengambil hasil agar jumlah kelurahan tidak memangkas kecamatan.
       final name = tokens.join(' ');
-      final cityMatches = await db.query(
+      final cityCandidates = await db.query(
         'tariffs',
         columns: cols,
         where: 'UPPER(city) LIKE ?',
@@ -550,6 +550,17 @@ class NextCargoTariffService {
         groupBy: 'province, city, district',
         orderBy: 'province ASC, city ASC, district ASC',
       );
+      // LIKE substring saja akan membuat MALANG cocok dengan PEMALANG.
+      // Cocokkan frasa sebagai kata utuh pada kolom city.
+      final cityPattern = RegExp(
+        '(^|\\\\s)${RegExp.escape(name)}(\\\\s|$)',
+        caseSensitive: false,
+      );
+      final cityMatches = cityCandidates
+          .where((row) => cityPattern.hasMatch(
+                (row['city'] ?? '').toString().trim(),
+              ))
+          .toList();
       if (cityMatches.isNotEmpty) {
         return cityMatches
             .map((row) => <String, Object?>{
