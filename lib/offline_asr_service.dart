@@ -231,12 +231,20 @@ class OfflineAsrService {
     }
   }
 
-  Future<void> unloadModel() async {
-    if (_recording) {
-      await _recorder.cancel();
-      _recording = false;
-      _recordingPath = null;
+  Future<void> cancelRecording() async {
+    if (!_recording) return;
+    final path = _recordingPath;
+    _recording = false;
+    _recordingPath = null;
+    await _recorder.cancel();
+    if (path != null) {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
     }
+  }
+
+  Future<void> unloadModel() async {
+    if (_recording) await cancelRecording();
     _recognizer?.free();
     _recognizer = null;
   }
