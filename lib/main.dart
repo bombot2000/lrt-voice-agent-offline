@@ -434,7 +434,16 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     if (query.isEmpty) return;
     _textController.clear();
     if (_isSpeaking) await _tts.stop();
-    if (_isListening) {
+    if (_localRecording) {
+      _offlineRecordTimer?.cancel();
+      await _offlineAsr.cancelRecording();
+      if (mounted) {
+        setState(() {
+          _localRecording = false;
+          _isListening = false;
+        });
+      }
+    } else if (_isListening) {
       await _speech.cancel();
       if (mounted) setState(() => _isListening = false);
     }
@@ -477,7 +486,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   @override
   void dispose() {
     _offlineRecordTimer?.cancel();
-    _offlineAsr.dispose();
+    unawaited(_offlineAsr.dispose());
     _speech.cancel();
     _tts.stop();
     _scrollController.dispose();
