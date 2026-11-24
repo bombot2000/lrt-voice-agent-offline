@@ -169,11 +169,11 @@ void main() {
     ];
     final csvRows = districts.map((district) => row.replaceFirst(
       'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'DKI JAKARTA,KOTA ADMINISTRASI JAKARTA PUSAT,$district,$district',
     )).join('\n');
-    )).join('\\n');
     final parsed = await NextCargoTariffService.parse(
+      'jakarta-pusat.csv',
       bytes('$header\n$csvRows'),
-      bytes('$header\\n$csvRows'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
