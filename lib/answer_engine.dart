@@ -137,10 +137,15 @@ class AnswerEngine {
     final suggestionRows = byDistrict.length > 1
         ? byDistrict.values.toList()
         : rows;
+    final isDistrictList = suggestionRows.isNotEmpty &&
+        suggestionRows.first['_suggestion_level'] == 'district';
+    final visibleRows = isDistrictList
+        ? suggestionRows
+        : suggestionRows.take(6);
     return Reply(
       '$count yang cocok. Pilih salah satu di layar, atau sebutkan kecamatan atau kelurahan lebih lengkap.',
       [
-        for (final r in suggestionRows)
+        for (final r in visibleRows)
           Choice(
             r['_suggestion_level'] == 'district'
                 ? [r['city'], r['district'], r['province']]
