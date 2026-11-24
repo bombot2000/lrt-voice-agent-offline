@@ -527,8 +527,8 @@ class NextCargoTariffService {
     // Namun jika menjadi satu-satunya nama wilayah yang disebut, perlakukan
     // sebagai kota tujuan agar semua kecamatannya dapat disarankan.
     if (tokens.isEmpty &&
-        RegExp(r'\\bmalang\\b', caseSensitive: false).hasMatch(query) &&
-        !RegExp(r'\\b(?:dari|asal)\\s+malang\\b', caseSensitive: false)
+        RegExp(r'\bmalang\b', caseSensitive: false).hasMatch(query) &&
+        !RegExp(r'\b(?:dari|asal)\s+malang\b', caseSensitive: false)
             .hasMatch(query)) {
       tokens = ['MALANG'];
     }
