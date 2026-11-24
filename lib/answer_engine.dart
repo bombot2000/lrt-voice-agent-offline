@@ -122,9 +122,24 @@ class AnswerEngine {
     final count = rows.length >= kMaxTariffMatches
         ? 'Ada banyak tujuan'
         : 'Ada ${rows.length} tujuan';
+    // Untuk pencarian nama kota, jangan penuhi enam saran pertama
+    // dengan kelurahan dari kecamatan yang sama. Tampilkan kandidat lintas
+    // kecamatan lebih dahulu, tetap membawa baris asli untuk tarif terpilih.
+    final byDistrict = <String, Map<String, Object?>>{};
+    for (final row in rows) {
+      final key = [
+        row['province'],
+        row['city'],
+        row['district'],
+      ].map((value) => (value ?? '').toString().trim().toUpperCase()).join('|');
+      byDistrict.putIfAbsent(key, () => row);
+    }
+    final suggestionRows = byDistrict.length > 1
+        ? byDistrict.values.toList()
+        : rows;
     return Reply(
       '$count yang cocok. Pilih salah satu di layar, atau sebutkan kecamatan atau kelurahan lebih lengkap.',
-      [for (final r in rows.take(6)) Choice(_destinationOf(r), r)],
+      [for (final r in suggestionRows.take(6)) Choice(_destinationOf(r), r)],
     );
   }
 }
