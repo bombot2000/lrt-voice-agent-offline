@@ -250,7 +250,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     if (weight == null) {
       final minimumTotal = minimum * rate;
       lines.add(
-          '$label: minimum ${formatPlainNumber(minimum)} kg, total tarif minimum ${formatRupiah(minimumTotal)}; setiap kg berikutnya ${formatRupiah(rate)}/kg.');
+          '$label ${formatPlainNumber(minimum)} kg: ${formatPlainNumber(minimum)} kg × ${formatRupiah(rate)}/kg = ${formatRupiah(minimumTotal)}; setiap kg berikutnya ${formatRupiah(rate)}/kg.');
     } else {
       final billable = billableWeight(weight, minimum);
       lines.add(
@@ -276,10 +276,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   final tarif10 = parseTariffNumber(r['tarif_10kg']);
   if (tarif10 != null && tarif10 > 0) {
     extras.add('Tarif 10 kg ${formatRupiah(tarif10)}.');
-  }
-  final khusus = parseTariffNumber(r['tarif_khusus']);
-  if (khusus != null && khusus > 0) {
-    extras.add('Tarif khusus ${formatRupiah(khusus)}.');
   }
   final lead = (r['lead_time'] ?? '').toString().trim();
   if (lead.isNotEmpty && lead != '-') extras.add('Lead time $lead hari.');
