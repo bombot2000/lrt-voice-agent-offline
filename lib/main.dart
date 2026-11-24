@@ -459,6 +459,12 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     _lastQuery = query;
     _lastQueryTime = now;
     _voiceMode = speak;
+    // Sembunyikan saran lama segera setelah pertanyaan baru diterima.
+    // Pending query di AnswerEngine tetap dipertahankan agar jawaban lanjutan
+    // masih dapat mempersempit tujuan yang sebelumnya ambigu.
+    if (_choices.isNotEmpty && mounted) {
+      setState(() => _choices = const []);
+    }
     // Semua input (suara, ketikan, dan pilihan) diproses berurutan.
     // Error satu query tidak boleh merusak antrean untuk query berikutnya.
     _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
