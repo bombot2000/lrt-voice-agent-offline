@@ -146,7 +146,7 @@ void main() {
     );
     final parsed = await NextCargoTariffService.parse(
       'wonosobo.csv',
-      bytes('$header\\n$sameName\\n$otherDistrict'),
+      bytes('$header\n$sameName\n$otherDistrict'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
