@@ -458,6 +458,27 @@ class NextCargoTariffService {
       if (cityMatch != null) city = cityMatch.group(1)!.trim();
     }
 
+    // "Wonosobo Wonosobo" means city=Wonosobo and district=Wonosobo.
+    // Preserve this repeated-name meaning before destinationTokens() uses Set.
+    if (city == null && district == null) {
+      final repeated = text
+          .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((word) => word.length >= 3 &&
+              !const {
+                'tolong', 'mohon', 'coba', 'cek', 'cari', 'carikan',
+                'ongkir', 'ongkos', 'tarif', 'tujuan', 'kirim',
+                'pengiriman', 'kota', 'kabupaten', 'kab', 'kecamatan',
+                'kec', 'kelurahan', 'desa', 'malang', 'next', 'cargo',
+                'reg', 'reguler', 'sp1', 'sp2', 'sp3', 'berat',
+              }.contains(word))
+          .toList();
+      if (repeated.length == 2 && repeated[0] == repeated[1]) {
+        city = repeated.first;
+        district = repeated.last;
+      }
+    }
+
     String? clean(String? value) {
       if (value == null || value.isEmpty) return null;
       return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -504,6 +525,31 @@ class NextCargoTariffService {
     final tokens = util.destinationTokens(query);
     final scope = _scopedAddress(query);
     if (tokens.isEmpty && scope.city == null && scope.district == null) return [];
+
+    // A single exact city name takes precedence over incidental matches
+    // in other cities' district or village columns.
+    if (scope.city == null && scope.district == null && tokens.length == 1) {
+      final name = tokens.single;
+      final cityMatches = await db.query(
+        'tariffs',
+        columns: cols,
+        where: 'UPPER(city) = ?',
+        whereArgs: [name],
+        orderBy: 'province ASC, city ASC, district ASC, village ASC',
+        limit: util.kMaxTariffMatches,
+      );
+      if (cityMatches.isNotEmpty) return cityMatches;
+
+      final districtMatches = await db.query(
+        'tariffs',
+        columns: cols,
+        where: 'UPPER(district) = ?',
+        whereArgs: [name],
+        orderBy: 'province ASC, city ASC, district ASC, village ASC',
+        limit: util.kMaxTariffMatches,
+      );
+      if (districtMatches.isNotEmpty) return districtMatches;
+    }
 
     final exact = await _queryTokens(
       db,
