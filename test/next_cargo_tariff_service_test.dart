@@ -130,6 +130,46 @@ void main() {
       );
     });
   });
+  test('same city and district names are matched by their field qualifiers', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final sameName = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TENGAH,WONOSOBO,WONOSOBO,WONOSOBO',
+    );
+    final otherDistrict = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TENGAH,WONOSOBO,KALIKAJAR,KALIKAJAR',
+    );
+    final parsed = await NextCargoTariffService.parse(
+      'wonosobo.csv',
+      bytes('$header\\n$sameName\\n$otherDistrict'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+
+    // Tanpa kecamatan, nama kota saja memang masih ambigu.
+    final cityOnly = await NextCargoTariffService.findDestination('Wonosobo');
+    expect(cityOnly.length, 2);
+
+    // Kata yang sama harus tetap dicocokkan pada dua kolom yang berbeda.
+    final sameCityDistrict = await NextCargoTariffService.findDestination(
+      'Wonosobo kec Wonosobo',
+    );
+    expect(sameCityDistrict.length, 1);
+    expect(sameCityDistrict.single['city'], 'WONOSOBO');
+    expect(sameCityDistrict.single['district'], 'WONOSOBO');
+
+    final explicitLabels = await NextCargoTariffService.findDestination(
+      'Kota Wonosobo Kecamatan Kalikajar',
+    );
+    expect(explicitLabels.length, 1);
+    expect(explicitLabels.single['city'], 'WONOSOBO');
+    expect(explicitLabels.single['district'], 'KALIKAJAR');
+  });
+
   test('first import does not create a restorable empty backup', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
