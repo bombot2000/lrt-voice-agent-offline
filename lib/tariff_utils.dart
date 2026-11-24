@@ -171,7 +171,7 @@ num? parseWeight(String query) {
 const Set<String> _ignoredWords = {
   'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari',
   'tujuan', 'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang',
-  'provinsi', 'propinsi', 'kota', 'kabupaten', 'kecamatan', 'kelurahan', 'desa', 'reg', 'reguler',
+  'provinsi', 'propinsi', 'kota', 'kabupaten', 'kab', 'kecamatan', 'kec', 'kelurahan', 'desa', 'reg', 'reguler',
   'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon', 'coba', 'cek',
   'carikan', 'cari', 'info', 'informasi', 'hitung', 'hitungkan', 'kalkulasi',
   'estimasi', 'berapa', 'untuk', 'dengan', 'berat', 'kg', 'kilo', 'kilogram',
