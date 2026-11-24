@@ -536,8 +536,8 @@ class NextCargoTariffService {
       final cityMatches = await db.query(
         'tariffs',
         columns: cols,
-        where: 'UPPER(city) = ?',
-        whereArgs: [name],
+        where: 'UPPER(city) LIKE ?',
+        whereArgs: ['%$name%'],
         groupBy: 'province, city, district',
         orderBy: 'province ASC, city ASC, district ASC',
       );
