@@ -130,6 +130,32 @@ void main() {
       );
     });
   });
+  test('city-only lookup returns every distinct district beyond eight rows', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final districts = [
+      'KEPANJEN', 'PAKISAJI', 'TAJINAN', 'BULULAWANG', 'TUREN',
+      'DAMPIT', 'PAGELARAN', 'GONDANGLEGI', 'WAGIR', 'DAU',
+    ];
+    final csvRows = districts.map((district) => row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KABUPATEN MALANG,$district,$district',
+    )).join('\\n');
+    final parsed = await NextCargoTariffService.parse(
+      'malang.csv',
+      bytes('$header\\n$csvRows'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+
+    final found = await NextCargoTariffService.findDestination('Malang');
+    expect(found.length, districts.length);
+    expect(found.map((item) => item['district']).toSet(), districts.toSet());
+    expect(found.every((item) => item['_suggestion_level'] == 'district'), isTrue);
+  });
+
   test('same city and district names are matched by their field qualifiers', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
