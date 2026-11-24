@@ -310,6 +310,27 @@ void main() {
       expect(a, isNot(contains('SP3')));
     });
 
+    test('pencarian nama kota menampilkan semua saran kecamatan', () async {
+      final districts = [
+        'KEPANJEN', 'PAKISAJI', 'TAJINAN', 'BULULAWANG',
+        'TUREN', 'DAMPIT', 'PAGELARAN', 'WAGIR',
+      ];
+      final rows = districts.map((district) => <String, Object?>{
+        ...abiansemal,
+        'city': 'KABUPATEN MALANG',
+        'district': district,
+        'village': district,
+        '_suggestion_level': 'district',
+      }).toList();
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: rows.length));
+      final reply = await engine.ask('Malang');
+      expect(reply.choices.length, districts.length);
+      expect(
+        reply.choices.map((choice) => choice.label.split(', ')[1]).toSet(),
+        districts.toSet(),
+      );
+    });
+
     test('beberapa tujuan cocok meminta perincian', () async {
       final engine =
           AnswerEngine(FakeLookup(rows: [abiansemal, abiansemal], total: 2));
