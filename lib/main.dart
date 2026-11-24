@@ -10,9 +10,39 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 void main() {
-  runApp(const MaterialApp(
+  runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: CargoVoiceAgentPage(),
+    theme: ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFFB71C1C),
+        brightness: Brightness.light,
+      ),
+      scaffoldBackgroundColor: const Color(0xFFF5F6F8),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFB71C1C),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF5F6F8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFB71C1C), width: 1.4),
+        ),
+      ),
+    ),
+    home: const CargoVoiceAgentPage(),
   ));
 }
 
@@ -496,64 +526,168 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isFirstMessage = _messages.length == 1;
+    final listeningLabel = _localRecording
+        ? 'Merekam suara offline • ketuk untuk selesai'
+        : _isListening
+            ? 'Sedang mendengarkan • ketuk untuk berhenti'
+            : _isSpeaking
+                ? 'Jawaban sedang dibacakan'
+                : _statusText;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
-        title: const Text('Cargo Voice Agent (Offline)',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('NEXT Cargo', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Asisten ongkir offline',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+          ],
+        ),
         actions: [
           IconButton(
-            tooltip: 'Kelola Data Ongkir',
+            tooltip: 'Kelola data tarif',
             onPressed: _openFareManager,
-            icon: const Icon(Icons.price_change),
+            icon: const Icon(Icons.database_outlined),
           ),
           IconButton(
-            tooltip: 'Mesin Suara Offline',
+            tooltip: 'Pengaturan mesin suara',
             onPressed: _openAsrSettings,
-            icon: Icon(_useOfflineAsr ? Icons.record_voice_over : Icons.settings_voice),
+            icon: Icon(_useOfflineAsr
+                ? Icons.record_voice_over
+                : Icons.settings_voice_outlined),
           ),
         ],
-        backgroundColor: const Color(0xFFD32F2F),
-        foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+              itemCount: _messages.length + (isFirstMessage ? 1 : 0),
               itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isUser = msg['role'] == 'user';
-                return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.78),
+                if (isFirstMessage && index == 0) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 18),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: isUser ? const Color(0xFFD32F2F) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFF1F0), Color(0xFFFFFFFF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFFF2D5D2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Color(0xFFB71C1C),
+                              foregroundColor: Colors.white,
+                              child: Icon(Icons.local_shipping_outlined),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text('Hitung ongkir lebih praktis',
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Masukkan kota/kecamatan tujuan dan berat barang. '
+                          'Tarif dihitung dari MALANG KOTA dan bisa digunakan tanpa internet.',
+                          style: TextStyle(height: 1.45, color: Color(0xFF555555)),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text('Contoh pertanyaan',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ActionChip(
+                              avatar: const Icon(Icons.edit_location_alt_outlined, size: 17),
+                              label: const Text('Malang Pakisaji 20 kg'),
+                              onPressed: () => _submitText('ongkir Malang Pakisaji 20 kg'),
+                            ),
+                            ActionChip(
+                              avatar: const Icon(Icons.scale_outlined, size: 17),
+                              label: const Text('Abiansemal Badung 20 kg'),
+                              onPressed: () => _submitText('ongkir ke Abiansemal Badung 20 kilo'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    child: Text(
-                      msg['text'] ?? '',
-                      style: TextStyle(
-                        color: isUser ? Colors.white : Colors.black87,
-                        fontSize: 15,
+                  );
+                }
+                final messageIndex = index - (isFirstMessage ? 1 : 0);
+                final msg = _messages[messageIndex];
+                final isUser = msg['role'] == 'user';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment:
+                        isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (!isUser) ...[
+                        const CircleAvatar(
+                          radius: 15,
+                          backgroundColor: Color(0xFFFFE3E0),
+                          foregroundColor: Color(0xFFB71C1C),
+                          child: Icon(Icons.support_agent, size: 18),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Container(
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.80,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isUser ? const Color(0xFFB71C1C) : Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(18),
+                              topRight: const Radius.circular(18),
+                              bottomLeft: Radius.circular(isUser ? 18 : 5),
+                              bottomRight: Radius.circular(isUser ? 5 : 18),
+                            ),
+                            border: isUser
+                                ? null
+                                : Border.all(color: const Color(0xFFE8E9EC)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.035),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            msg['text'] ?? '',
+                            style: TextStyle(
+                              color: isUser ? Colors.white : const Color(0xFF252525),
+                              fontSize: 14.5,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      if (isUser) const SizedBox(width: 23),
+                    ],
                   ),
                 );
               },
@@ -561,117 +695,189 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: const BoxDecoration(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 14,
+                  offset: const Offset(0, -3),
+                ),
+              ],
             ),
             child: SafeArea(
               top: false,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _statusText,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _isListening
-                          ? const Color(0xFFD32F2F)
-                          : Colors.grey[700],
-                      fontWeight:
-                          _isListening ? FontWeight.bold : FontWeight.normal,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _isListening
+                              ? const Color(0xFFE53935)
+                              : _isSpeaking
+                                  ? Colors.orange
+                                  : const Color(0xFF2E9D63),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          listeningLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _isListening
+                                ? const Color(0xFFB71C1C)
+                                : const Color(0xFF62666D),
+                            fontWeight: _isListening
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (_useOfflineAsr)
+                        const Chip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: Icon(Icons.offline_bolt, size: 15),
+                          label: Text('Whisper offline'),
+                          padding: EdgeInsets.zero,
+                        ),
+                    ],
                   ),
                   if (_choices.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 150),
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            for (final c in _choices)
-                              ActionChip(
-                                label: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context).size.width -
-                                              96),
-                                  child: Text(c.label,
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                                onPressed: () => _handleChoice(c),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7F6),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF0D9D6)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Pilih tujuan yang sesuai',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13)),
+                          const SizedBox(height: 7),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 132),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  for (final c in _choices)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 5),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            alignment: Alignment.centerLeft,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 10),
+                                            foregroundColor: const Color(0xFF8E1717),
+                                            side: const BorderSide(
+                                                color: Color(0xFFE7C4C0)),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          onPressed: () => _handleChoice(c),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.place_outlined, size: 18),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(c.label,
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis),
+                                              ),
+                                              const Icon(Icons.chevron_right, size: 18),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                          ],
-                        ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _textController,
+                          minLines: 1,
+                          maxLines: 3,
+                          textCapitalization: TextCapitalization.sentences,
                           textInputAction: TextInputAction.send,
                           onSubmitted: _submitText,
                           decoration: InputDecoration(
-                            hintText: 'Ketik tujuan dan berat...',
-                            isDense: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
+                            hintText: 'Tujuan dan berat, mis. Malang 20 kg',
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 13),
+                            prefixIcon: const Icon(Icons.chat_outlined, size: 20),
                             suffixIcon: IconButton(
-                              tooltip: 'Kirim',
-                              icon: const Icon(Icons.send),
-                              onPressed: () =>
-                                  _submitText(_textController.text),
+                              tooltip: 'Kirim pertanyaan',
+                              icon: const Icon(Icons.send_rounded),
+                              color: const Color(0xFFB71C1C),
+                              onPressed: () => _submitText(_textController.text),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 76,
-                        height: 76,
-                        child: Center(
-                          child: GestureDetector(
+                      const SizedBox(width: 9),
+                      Tooltip(
+                        message: _localRecording
+                            ? 'Selesai merekam'
+                            : _isListening
+                                ? 'Hentikan mikrofon'
+                                : 'Tanya dengan suara',
+                        child: Material(
+                          color: _isListening
+                              ? const Color(0xFFB71C1C)
+                              : const Color(0xFFFFE5E2),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
                             onTap: _toggleListening,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              width: _isListening ? 72 : 60,
-                              height: _isListening ? 72 : 60,
-                              decoration: BoxDecoration(
-                                color: _isListening
-                                    ? Colors.redAccent
-                                    : (_isSpeaking
-                                        ? Colors.orange
-                                        : const Color(0xFFD32F2F)),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFD32F2F)
-                                        .withValues(alpha: 0.28),
-                                    blurRadius: _isListening ? 18 : 8,
-                                    spreadRadius: _isListening ? 4 : 1,
-                                  ),
-                                ],
-                              ),
+                            child: SizedBox(
+                              width: 52,
+                              height: 52,
                               child: Icon(
-                                _isListening
-                                    ? Icons.stop
-                                    : (_isSpeaking
-                                        ? Icons.volume_up
-                                        : Icons.mic),
-                                color: Colors.white,
-                                size: 30,
+                                _isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                                color: _isListening
+                                    ? Colors.white
+                                    : const Color(0xFFB71C1C),
+                                size: 26,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 5),
+                  const Center(
+                    child: Text(
+                      'Tarif tersimpan di perangkat • Bisa digunakan offline',
+                      style: TextStyle(fontSize: 10.5, color: Color(0xFF858990)),
+                    ),
                   ),
                 ],
               ),
@@ -681,4 +887,5 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       ),
     );
   }
+
 }
