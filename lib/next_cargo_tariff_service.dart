@@ -537,11 +537,11 @@ class NextCargoTariffService {
 
     // A single exact city name takes precedence over incidental matches
     // in other cities' district or village columns.
-    if (scope.city == null && scope.district == null && tokens.length == 1) {
-      final name = tokens.single;
-      // Untuk input nama kota saja, ambil satu baris per kecamatan,
-      // bukan membatasi delapan kelurahan pertama. Dengan begitu seluruh
-      // kecamatan kota tersebut dapat ditampilkan sebagai saran.
+    if (scope.city == null && scope.district == null && tokens.isNotEmpty) {
+      // Coba cocokkan frasa kota secara utuh (mis. JAKARTA PUSAT), bukan
+      // hanya satu token. GROUP BY harus dilakukan di SQLite sebelum
+      // mengambil hasil agar jumlah kelurahan tidak memangkas kecamatan.
+      final name = tokens.join(' ');
       final cityMatches = await db.query(
         'tariffs',
         columns: cols,
