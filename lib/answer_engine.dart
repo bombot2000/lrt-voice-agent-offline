@@ -1,4 +1,5 @@
 import 'tariff_utils.dart';
+import 'command_parser_service.dart';
 
 /// Sumber data tarif kargo. Dipisah sebagai antarmuka agar mesin jawaban
 /// bisa diuji tanpa SQLite.
@@ -10,22 +11,7 @@ abstract class TariffLookup {
 const String _helpAnswer =
     'Saya bisa menghitung ongkir NEXT Cargo dari MALANG KOTA secara offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo reguler".';
 
-const Set<String> _greetingWords = {
-  'halo', 'hai', 'selamat', 'pagi', 'siang', 'sore', 'malam', 'bantuan',
-};
-
-/// Kata yang menandakan pertanyaan tentang pengiriman kargo.
-const Set<String> _cargoWords = {
-  'ongkir', 'ongkos', 'cargo', 'kargo', 'paket', 'kirim', 'pengiriman',
-  'barang', 'kg', 'kilo', 'kilogram', 'reg', 'reguler', 'sp1', 'sp2', 'sp3',
-  'next', 'malang', 'tarif', 'harga', 'biaya',
-};
-
-String normalizeQuery(String query) => query
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^\w\s-]'), ' ')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .trim();
+String normalizeQuery(String query) => CommandParserService.normalize(query);
 
 /// Satu pilihan tujuan yang bisa diketuk saat hasil pencarian ambigu.
 class Choice {
@@ -75,13 +61,22 @@ class AnswerEngine {
       reset(); // Bukan jawaban atas pertanyaan sebelumnya: mulai baru.
     }
 
-    final normalized = normalizeQuery(query);
-    final words = normalized.split(' ').where((w) => w.isNotEmpty).toSet();
-    final cargo = words.any(_cargoWords.contains) ||
-        RegExp(r'\d\s*(kg|kilo|kilogram)\b').hasMatch(normalized);
-    final greeting =
-        words.any(_greetingWords.contains) || normalized.contains('bisa apa');
-    if (greeting && !cargo) return const Reply(_helpAnswer);
+    final command = CommandParserService.parse(query);
+    if (command.intent == CommandIntent.arithmetic) {
+      final expression = command.arithmetic!;
+      final result = expression.calculate();
+      if (result == null) {
+        return const Reply('Perhitungan tidak dapat dilakukan karena pembaginya nol.');
+      }
+      return Reply(
+        'Hasil perhitungan: ${formatPlainNumber(expression.left)} '
+        '${expression.operatorLabel} ${formatPlainNumber(expression.right)} '
+        '= ${formatPlainNumber(result)}.',
+      );
+    }
+    if (command.intent == CommandIntent.greeting) {
+      return const Reply(_helpAnswer);
+    }
 
     List<Map<String, Object?>> matches;
     try {
