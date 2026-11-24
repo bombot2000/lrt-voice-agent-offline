@@ -139,7 +139,17 @@ class AnswerEngine {
         : rows;
     return Reply(
       '$count yang cocok. Pilih salah satu di layar, atau sebutkan kecamatan atau kelurahan lebih lengkap.',
-      [for (final r in suggestionRows.take(6)) Choice(_destinationOf(r), r)],
+      [
+        for (final r in suggestionRows)
+          Choice(
+            r['_suggestion_level'] == 'district'
+                ? [r['city'], r['district'], r['province']]
+                    .where((value) => value != null && value.toString().trim().isNotEmpty)
+                    .join(', ')
+                : _destinationOf(r),
+            r,
+          ),
+      ],
     );
   }
 }
