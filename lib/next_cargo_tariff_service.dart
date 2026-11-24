@@ -428,37 +428,102 @@ class NextCargoTariffService {
     return words;
   }
 
+  /// Memisahkan penanda wilayah dari nama wilayah. Contoh:
+  /// "ongkir ke Wonosobo kec Wonosobo 20 kg" menghasilkan
+  /// city=WONOSOBO dan district=WONOSOBO, bukan satu token yang ambigu.
+  static ({String? city, String? district}) _scopedAddress(String query) {
+    final text = query.toLowerCase().replaceAll(RegExp(r'[,;]'), ' ').replaceAll(RegExp(r'\\s+'), ' ').trim();
+    final districtMatch = RegExp(
+      r'\\b(?:kec(?:amatan)?|kec\\.)\\s+(.+?)(?=\\s+\\d|\\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\\b|$)',
+    ).firstMatch(text);
+
+    String? district;
+    String? city;
+    if (districtMatch != null) {
+      district = districtMatch.group(1)!.trim();
+      var cityPart = text.substring(0, districtMatch.start).trim();
+      final destinationStart = RegExp(r'\\bke\\s+').allMatches(cityPart).toList();
+      if (destinationStart.isNotEmpty) {
+        cityPart = cityPart.substring(destinationStart.last.end).trim();
+      }
+      cityPart = cityPart
+          .replaceFirst(RegExp(r'^(?:(?:tolong|mohon|coba|cek|cari|carikan|ongkir|ongkos|tarif|tujuan|kirim|pengiriman)\\s+)+'), '')
+          .replaceFirst(RegExp(r'^(?:kota|kabupaten|kab\\.?|city)\\s+'), '')
+          .trim();
+      if (cityPart.isNotEmpty) city = cityPart;
+    } else {
+      final cityMatch = RegExp(
+        r'\\b(?:kota|kabupaten|kab\\.?)\\s+(.+?)(?=\\s+\\d|\\s+(?:kg|kilo|kilogram|reguler|reg|sp1|sp2|sp3|tarif|ongkir|ongkos|berat)\\b|$)',
+      ).firstMatch(text);
+      if (cityMatch != null) city = cityMatch.group(1)!.trim();
+    }
+
+    String? clean(String? value) {
+      if (value == null || value.isEmpty) return null;
+      return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9 ]'), '').replaceAll(RegExp(r'\\s+'), ' ').trim();
+    }
+    return (city: clean(city), district: clean(district));
+  }
+
   static Future<List<Map<String, Object?>>> _queryTokens(
-      Database db, List<String> tokens) async {
-    if (tokens.isEmpty) return [];
-    final clauses = <String>[], args = <Object?>[];
+    Database db,
+    List<String> tokens, {
+    String? city,
+    String? district,
+  }) async {
+    final clauses = <String>[];
+    final args = <Object?>[];
     for (final token in tokens) {
       clauses.add('(${_addressFields.map((f) => '$f LIKE ?').join(' OR ')})');
       for (var i = 0; i < _addressFields.length; i++) {
         args.add('%$token%');
       }
     }
-    return db.query('tariffs',
-        columns: cols,
-        where: clauses.join(' AND '),
-        whereArgs: args,
-        orderBy: 'province ASC, city ASC, district ASC, village ASC',
-        limit: util.kMaxTariffMatches);
+    if (city != null) {
+      clauses.add('UPPER(city) LIKE ?');
+      args.add('%$city%');
+    }
+    if (district != null) {
+      clauses.add('UPPER(district) LIKE ?');
+      args.add('%$district%');
+    }
+    if (clauses.isEmpty) return [];
+    return db.query(
+      'tariffs',
+      columns: cols,
+      where: clauses.join(' AND '),
+      whereArgs: args,
+      orderBy: 'province ASC, city ASC, district ASC, village ASC',
+      limit: util.kMaxTariffMatches,
+    );
   }
 
   static Future<List<Map<String, Object?>>> findDestination(
       String query) async {
     final db = await open();
     final tokens = util.destinationTokens(query);
-    if (tokens.isEmpty) return [];
-    final exact = await _queryTokens(db, tokens);
+    final scope = _scopedAddress(query);
+    if (tokens.isEmpty && scope.city == null && scope.district == null) return [];
+
+    final exact = await _queryTokens(
+      db,
+      tokens,
+      city: scope.city,
+      district: scope.district,
+    );
     if (exact.isNotEmpty) return exact;
 
-    // Kosakata dimuat sekali per versi data; impor dan restore mengosongkan cache.
+    // Koreksi ejaan hanya untuk token bebas. Batas kota/kecamatan yang
+    // disebut eksplisit tetap dipertahankan agar tidak pindah kolom wilayah.
     final vocabulary = await _loadDestinationVocabulary(db);
     final corrected = util.resolveTokens(tokens, vocabulary);
     if (corrected.join('|') == tokens.join('|')) return [];
-    return _queryTokens(db, corrected);
+    return _queryTokens(
+      db,
+      corrected,
+      city: scope.city,
+      district: scope.district,
+    );
   }
 }
 
