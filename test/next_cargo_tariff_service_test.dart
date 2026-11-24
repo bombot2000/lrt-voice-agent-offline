@@ -156,6 +156,33 @@ void main() {
     expect(found.every((item) => item['_suggestion_level'] == 'district'), isTrue);
   });
 
+  test('multi-word city query returns every distinct district', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final districts = [
+      'GAMBIR', 'TANAH ABANG', 'MENTENG', 'SENEN', 'CEMPAKA PUTIH',
+      'JOHAR BARU', 'KEMAYORAN', 'SAWAH BESAR', 'KELAPA GADING',
+      'TANJUNG PRIOK',
+    ];
+    final csvRows = districts.map((district) => row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'DKI JAKARTA,KOTA ADMINISTRASI JAKARTA PUSAT,$district,$district',
+    )).join('\\n');
+    final parsed = await NextCargoTariffService.parse(
+      'jakarta-pusat.csv',
+      bytes('$header\\n$csvRows'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+
+    final found = await NextCargoTariffService.findDestination('Jakarta Pusat');
+    expect(found.length, districts.length);
+    expect(found.map((item) => item['district']).toSet(), districts.toSet());
+    expect(found.every((item) => item['_suggestion_level'] == 'district'), isTrue);
+  });
+
   test('same city and district names are matched by their field qualifiers', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
