@@ -82,7 +82,7 @@ void main() {
     test('sapaan di depan pertanyaan ongkir tidak mengganggu', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       expect(await engine.answer('selamat pagi ongkir ke Abiansemal'),
-          contains('Reguler: minimum 25 kg'));
+          contains('Reguler 25 kg: 25 kg × Rp 4.700/kg = Rp 117.500'));
     });
   });
 
