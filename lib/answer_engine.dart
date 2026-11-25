@@ -183,8 +183,9 @@ class AnswerEngine {
         for (final r in visibleRows)
           Choice(
             r['_suggestion_level'] == 'district'
-                ? [r['city'], r['district'], r['province']]
-                    .where((value) => value != null && value.toString().trim().isNotEmpty)
+                ? [r['district'], r['city'], r['province']]
+                    .map(formatRegionName)
+                    .where((value) => value.isNotEmpty)
                     .join(', ')
                 : _destinationOf(r),
             r,
