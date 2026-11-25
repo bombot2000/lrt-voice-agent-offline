@@ -162,6 +162,34 @@ void main() {
     expect(found.every((item) => item['_suggestion_level'] == 'district'), isTrue);
   });
 
+  test('whole-word destination matches rank before substring matches', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final substringRows = [
+      for (var i = 0; i < 10; i++)
+        row.replaceFirst(
+          'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+          'JAWA TIMUR,KOTA CONTOH,DISTRICT ${i.toString().padLeft(2, '0')},BATUAN ${i.toString().padLeft(2, '0')}',
+        ),
+    ];
+    final exactRow = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KOTA BATU,DISTRICT KHUSUS,BATU',
+    );
+    final parsed = await NextCargoTariffService.parse(
+      'batu.csv',
+      bytes('$header\\n${[...substringRows, exactRow].join('\\n')}'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+
+    final found = await NextCargoTariffService.findDestination('BATU');
+    expect(found, isNotEmpty);
+    expect(found.first['village'], 'BATU');
+  });
+
   test('multi-word city query returns every distinct district', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
