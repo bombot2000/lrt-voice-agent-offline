@@ -261,13 +261,13 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   }
 
   void _showReply(String userText, Reply reply, {required bool speak}) {
+    _voice.setStatus(VoiceController.defaultStatus);
     setState(() {
       _messages.add(ChatMessage.user(userText));
       _messages.add(ChatMessage.agent(
         speak ? reply.text : formatTypedReply(reply.text),
       ));
       _choices = reply.choices;
-      _voice.setStatus(VoiceController.defaultStatus);
     });
     _scrollToBottom();
     if (speak) _voice.speak(spokenVersion(reply.text));
