@@ -186,6 +186,25 @@ String _destinationOf(Map<String, Object?> r) =>
 String buildFareAnswer(String query, Map<String, Object?> r) {
   final destination = _destinationOf(r);
 
+  // Tarif kendaraan adalah harga tetap per unit dari kolom Excel, bukan tarif/kg.
+  final lowerQuery = query.toLowerCase();
+  final wantsBicycle = RegExp(r'\\bsepeda\\b').hasMatch(lowerQuery);
+  final motorMatch = RegExp(r'\\bmotor\\s*(100|125|150|250|500|750)\\s*(?:cc)?\\b')
+      .firstMatch(lowerQuery);
+  final mentionsMotor = RegExp(r'\\bmotor\\b').hasMatch(lowerQuery);
+  if (wantsBicycle || mentionsMotor) {
+    if (mentionsMotor && motorMatch == null) {
+      return 'Sebutkan kapasitas motor: 100cc, 125cc, 150cc, 250cc, 500cc, atau 750cc.';
+    }
+    final item = wantsBicycle ? 'sepeda' : 'motor ${motorMatch!.group(1)}cc';
+    final key = wantsBicycle ? 'sepeda' : 'motor_${motorMatch!.group(1)}cc';
+    final rate = parseTariffNumber(r[key]);
+    if (rate == null || rate <= 0) {
+      return 'Tarif $item tidak tersedia untuk tujuan $destination.';
+    }
+    return 'Tarif NEXT Cargo dari MALANG KOTA ke $destination untuk $item: ${formatRupiah(rate)} per unit (tarif tetap, tidak dihitung berdasarkan berat barang).';
+  }
+
   final weight = parseWeight(query);
 
   final lower = query.toLowerCase();
