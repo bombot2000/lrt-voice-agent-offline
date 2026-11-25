@@ -33,6 +33,12 @@ class VoiceController extends ChangeNotifier {
     _notify();
   }
 
+  void setExternalListening(bool listening, {String? status}) {
+    _isListening = listening;
+    if (status != null) _statusText = status;
+    _notify();
+  }
+
   Future<void> initialize() async {
     await initializeSpeech();
     await initializeTts();
