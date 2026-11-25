@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -77,11 +78,17 @@ class OfflineAsrService {
   }) async {
     if (_busy) throw StateError('Proses pengenalan suara sedang berjalan.');
     _busy = true;
-    final directory = await _modelDirectory();
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    HttpClient? client;
     var completedBytes = 0;
 
     try {
+      // Keep setup inside the guarded block so filesystem failures cannot
+      // leave the service permanently marked as busy.
+      final directory = await _modelDirectory();
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 30)
+        ..idleTimeout = const Duration(seconds: 45);
+
       for (final model in _modelFiles) {
         final target = File(p.join(directory.path, model.name));
         if (await target.exists() && await target.length() == model.bytes) {
@@ -96,7 +103,9 @@ class OfflineAsrService {
         final partial = File(target.path + '.part');
         if (await partial.exists()) await partial.delete();
 
-        final request = await client.getUrl(Uri.parse(model.url));
+        final request = await client.getUrl(Uri.parse(model.url)).timeout(
+          const Duration(seconds: 45),
+        );
         request.headers.set(HttpHeaders.userAgentHeader, 'CargoVoiceAgent/1.0');
         final response = await request.close().timeout(const Duration(minutes: 3));
         if (response.statusCode != HttpStatus.ok) {
@@ -108,7 +117,7 @@ class OfflineAsrService {
         var fileBytes = 0;
         final sink = partial.openWrite();
         try {
-          await for (final chunk in response) {
+          await for (final chunk in response.timeout(const Duration(seconds: 45))) {
             sink.add(chunk);
             fileBytes += chunk.length;
             onProgress?.call(completedBytes + fileBytes, _totalBytes);
@@ -138,7 +147,7 @@ class OfflineAsrService {
       }
       rethrow;
     } finally {
-      client.close(force: true);
+      client?.close(force: true);
       _busy = false;
     }
   }
@@ -245,10 +254,15 @@ class OfflineAsrService {
     final path = _recordingPath;
     _recording = false;
     _recordingPath = null;
-    await _recorder.cancel();
-    if (path != null) {
-      final file = File(path);
-      if (await file.exists()) await file.delete();
+    try {
+      await _recorder.cancel();
+    } finally {
+      // Recorder cancellation can fail on a disconnected audio device; the
+      // temporary PCM file must still be removed.
+      if (path != null) {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      }
     }
   }
 
