@@ -141,21 +141,28 @@ class VoiceController extends ChangeNotifier {
     _isListening = true;
     _statusText = listeningStatus;
     _notify();
-    await _speech.listen(
-      listenOptions: stt.SpeechListenOptions(
-        localeId: _localeId,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        onDevice: true,
-        partialResults: true,
-        cancelOnError: true,
-      ),
-      onResult: (result) {
-        final words = result.recognizedWords.trim();
-        onPartialResult(words.isEmpty ? listeningStatus : words);
-        if (result.finalResult && words.isNotEmpty) onFinalResult(words);
-      },
-    );
+    try {
+      await _speech.listen(
+        listenOptions: stt.SpeechListenOptions(
+          localeId: _localeId,
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+          onDevice: true,
+          partialResults: true,
+          cancelOnError: true,
+        ),
+        onResult: (result) {
+          if (_disposed) return;
+          final words = result.recognizedWords.trim();
+          onPartialResult(words.isEmpty ? listeningStatus : words);
+          if (result.finalResult && words.isNotEmpty) onFinalResult(words);
+        },
+      );
+    } catch (error) {
+      _isListening = false;
+      _statusText = 'Gagal memulai pengenalan suara: $error';
+      _notify();
+    }
   }
 
   Future<void> stopListening() async {
