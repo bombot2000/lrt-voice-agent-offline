@@ -347,7 +347,11 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     extras.add('Tarif 10 kg ${formatRupiah(tarif10)}.');
   }
   final rawLead = (r['lead_time'] ?? '').toString().trim();
-  final lead = RegExp(r'^\\d+(?:[.,]\\d+)?
+  final parsedLead = parseTariffNumber(rawLead);
+  // Lead time selalu ditampilkan dalam hari bulat; pecahan dibulatkan ke atas
+  // agar estimasi tidak menjanjikan waktu lebih singkat dari data sumber.
+  final lead = parsedLead == null ? rawLead : parsedLead.ceil().toString();
+  if (lead.isNotEmpty && lead != '-') extras.add('Lead time $lead hari.');
   final handler = (r['handler'] ?? '').toString().trim();
   if (handler.isNotEmpty && handler != '-') extras.add('Handler $handler.');
 
