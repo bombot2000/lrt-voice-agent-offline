@@ -267,7 +267,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         speak ? reply.text : formatTypedReply(reply.text),
       ));
       _choices = reply.choices;
-      _voice.statusText = VoiceController.defaultStatus;
+      _voice.setStatus(VoiceController.defaultStatus);
     });
     _scrollToBottom();
     if (speak) _voice.speak(spokenVersion(reply.text));
@@ -300,11 +300,11 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     final isFirstMessage = _messages.length == 1;
     final listeningLabel = _localRecording
         ? 'Merekam suara offline • ketuk untuk selesai'
-        : _isListening
+        : _voice.isListening
             ? 'Sedang mendengarkan • ketuk untuk berhenti'
             : _voice.isSpeaking
                 ? 'Jawaban sedang dibacakan'
-                : _statusText;
+                : _voice.statusText;
 
     return Scaffold(
       appBar: AppBar(
@@ -436,7 +436,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                         decoration: BoxDecoration(
                           color: _isListening
                               ? const Color(0xFFE53935)
-                              : _isSpeaking
+                              : _voice.isSpeaking
                                   ? Colors.orange
                                   : const Color(0xFF2E9D63),
                           shape: BoxShape.circle,
