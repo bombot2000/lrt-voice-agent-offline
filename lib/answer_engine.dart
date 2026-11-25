@@ -36,6 +36,7 @@ class AnswerEngine {
   String _pendingRootQuery = '';
   final Set<String> _pendingBaseTokens = <String>{};
   final Set<String> _pendingRefinementTokens = <String>{};
+  final Set<String> _pendingRefinementDetails = <String>{};
   List<Map<String, Object?>> _pending = const [];
 
   AnswerEngine(this.tariffs);
@@ -47,6 +48,7 @@ class AnswerEngine {
     _pendingRootQuery = '';
     _pendingBaseTokens.clear();
     _pendingRefinementTokens.clear();
+    _pendingRefinementDetails.clear();
     _pending = const [];
   }
 
@@ -109,13 +111,28 @@ class AnswerEngine {
   /// dengan satu pun kandidat (berarti ini pertanyaan baru).
   Future<Reply?> _narrow(String query) async {
     final tokens = destinationTokens(query);
-    if (tokens.isEmpty) return null;
-    // Simpan pertanyaan awal sekali saja; follow-up disimpan sebagai token unik.
-    // Ini mencegah query tumbuh berulang: "Badung Bali Badung Bali ...".
+    // Berat atau spesifikasi kendaraan boleh diberikan setelah tujuan ambigu,
+    // misalnya "20 kg" atau "125cc", tanpa mengulang nama tujuan.
+    final hasWeightDetail = parseWeight(query) != null;
+    final hasVehicleDetail = RegExp(
+      r'\\b(?:motor\\s*)?(?:100|125|150|250|500|750)\\s*cc\\b|\\bsepeda\\b',
+      caseSensitive: false,
+    ).hasMatch(query);
+    if (tokens.isEmpty && !hasWeightDetail && !hasVehicleDetail) return null;
+
+    // Simpan pertanyaan awal sekali saja; detail dan token follow-up unik
+    // agar konteks tidak terus bertambah pada ucapan yang diulang.
     _pendingRefinementTokens.addAll(
       tokens.where((token) => !_pendingBaseTokens.contains(token)),
     );
-    final combined = '$_pendingRootQuery ${_pendingRefinementTokens.join(' ')}'.trim();
+    if (hasWeightDetail || hasVehicleDetail) {
+      _pendingRefinementDetails.add(query.trim());
+    }
+    final combined = [
+      _pendingRootQuery,
+      ..._pendingRefinementTokens,
+      ..._pendingRefinementDetails,
+    ].where((part) => part.isNotEmpty).join(' ').trim();
     // Cari ulang seluruh database: _pending hanya memuat maksimal 8 pilihan UI.
     final narrowed = await tariffs.find(combined);
     if (narrowed.isEmpty) return null;
