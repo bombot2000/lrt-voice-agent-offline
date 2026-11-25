@@ -499,6 +499,31 @@ void main() {
       expect(engine.hasPendingChoice, false);
     });
 
+    test('berat dapat diberikan setelah tujuan masih ambigu', () async {
+      final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
+      await engine.ask('ongkir ke Abiansemal');
+      final afterWeight = await engine.ask('20 kg');
+      expect(afterWeight.text, contains('2 tujuan yang cocok'));
+      final resolved = await engine.ask('Sibang');
+      expect(resolved.text, contains('SIBANG KAJA'));
+      expect(resolved.text, contains('berat aktual 20 kg'));
+      expect(engine.hasPendingChoice, false);
+    });
+
+    test('kapasitas motor dapat diberikan setelah tujuan masih ambigu', () async {
+      final vehicleRows = [
+        <String, Object?>{...abiansemal, 'motor_125cc': '135000'},
+        <String, Object?>{...sibang, 'motor_125cc': '145000'},
+      ];
+      final engine = AnswerEngine(FakeLookup(rows: vehicleRows, total: 2));
+      await engine.ask('ongkir motor ke Abiansemal');
+      final afterCapacity = await engine.ask('125cc');
+      expect(afterCapacity.text, contains('2 tujuan yang cocok'));
+      final selected = engine.select(afterCapacity.choices.last);
+      expect(selected.text, contains('motor 125cc'));
+      expect(selected.text, contains('Rp 145.000 per unit'));
+    });
+
     test('follow-up berulang tidak menggandakan konteks pencarian', () async {
       final lookup = FakeLookup(rows: rows, total: 2);
       final engine = AnswerEngine(lookup);
