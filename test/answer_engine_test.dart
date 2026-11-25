@@ -137,6 +137,31 @@ void main() {
     });
   });
 
+  group('format lead time', () {
+    test('angka hari bulat tidak menampilkan akhiran .0', () {
+      final five = buildFareAnswer('ongkir ke Abiansemal', {
+        ...abiansemal,
+        'lead_time': '5.0',
+      });
+      final four = buildFareAnswer('ongkir ke Abiansemal', {
+        ...abiansemal,
+        'lead_time': '4.0',
+      });
+      expect(five, contains('Lead time 5 hari.'));
+      expect(five, isNot(contains('5.0 hari')));
+      expect(four, contains('Lead time 4 hari.'));
+      expect(four, isNot(contains('4.0 hari')));
+    });
+
+    test('lead time pecahan tetap dipertahankan', () {
+      final result = buildFareAnswer('ongkir ke Abiansemal', {
+        ...abiansemal,
+        'lead_time': '5.5',
+      });
+      expect(result, contains('Lead time 5.5 hari.'));
+    });
+  });
+
   group('pertanyaan kargo', () {
     test('tujuan cocok dengan berat dan layanan', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
