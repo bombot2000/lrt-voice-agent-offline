@@ -153,12 +153,13 @@ void main() {
       expect(four, isNot(contains('4.0 hari')));
     });
 
-    test('lead time pecahan tetap dipertahankan', () {
+    test('lead time pecahan dibulatkan ke atas menjadi hari bulat', () {
       final result = buildFareAnswer('ongkir ke Abiansemal', {
         ...abiansemal,
         'lead_time': '5.5',
       });
-      expect(result, contains('Lead time 5.5 hari.'));
+      expect(result, contains('Lead time 6 hari.'));
+      expect(result, isNot(contains('5.5 hari')));
     });
   });
 
