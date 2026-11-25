@@ -188,10 +188,10 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
 
   // Tarif kendaraan adalah harga tetap per unit dari kolom Excel, bukan tarif/kg.
   final lowerQuery = query.toLowerCase();
-  final wantsBicycle = RegExp(r'\\bsepeda\\b').hasMatch(lowerQuery);
-  final motorMatch = RegExp(r'\\bmotor\\s*(100|125|150|250|500|750)\\s*(?:cc)?\\b')
+  final wantsBicycle = RegExp(r'\bsepeda\\b').hasMatch(lowerQuery);
+  final motorMatch = RegExp(r'\bmotor\s*(100|125|150|250|500|750)\s*(?:cc)?\\b')
       .firstMatch(lowerQuery);
-  final mentionsMotor = RegExp(r'\\bmotor\\b').hasMatch(lowerQuery);
+  final mentionsMotor = RegExp(r'\bmotor\\b').hasMatch(lowerQuery);
   if (wantsBicycle || mentionsMotor) {
     if (mentionsMotor && motorMatch == null) {
       return 'Sebutkan kapasitas motor: 100cc, 125cc, 150cc, 250cc, 500cc, atau 750cc.';
