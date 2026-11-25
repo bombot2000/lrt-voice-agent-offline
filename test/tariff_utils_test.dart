@@ -96,12 +96,19 @@ void main() {
       expect(parseWeight('2.500 kg'), 2500);
       expect(parseWeight('1.500 kg'), 1500);
       expect(parseWeight('2,5 kg'), 2.5);
+      // Spasi antara angka dan satuan bersifat opsional.
+      expect(parseWeight('10 kg'), 10);
+      expect(parseWeight('10kg'), 10);
+      expect(parseWeight('10 KG'), 10);
+      expect(parseWeight('10KG'), 10);
       expect(parseWeight('seribu lima ratus kilo'), 1500);
     });
 
     test('frasa berat tidak menjadi token tujuan', () {
       expect(destinationTokens('ongkir ke Abiansemal dua puluh kilo'),
           ['ABIANSEMAL']);
+      expect(destinationTokens('ongkir ke Abiansemal 10 kg'), ['ABIANSEMAL']);
+      expect(destinationTokens('ongkir ke Abiansemal 10kg'), ['ABIANSEMAL']);
       expect(destinationTokens('tarif ke Denpasaar lima belas kilo'),
           ['DENPASAAR']);
     });
