@@ -91,6 +91,52 @@ void main() {
     });
   });
 
+  group('tarif kendaraan per unit', () {
+    const vehicleRow = <String, Object?>{
+      'province': 'BALI', 'city': 'BADUNG',
+      'district': 'ABIANSEMAL', 'village': 'ABIANSEMAL',
+      'motor_100cc': '125000', 'motor_125cc': '135000',
+      'motor_150cc': '145000', 'motor_250cc': '175000',
+      'motor_500cc': '225000', 'motor_750cc': '275000',
+      'sepeda': '85000', 'min_reg': '25', 'tarif_reg': '4700',
+    };
+
+    test('motor 100cc memakai tarif tetap meski query menyebut berat', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [vehicleRow], total: 1));
+      final result = await engine.answer('tarif motor 100cc ke Badung 20 kg');
+      expect(result, contains('motor 100cc: Rp 125.000 per unit'));
+      expect(result, contains('tidak dihitung berdasarkan berat barang'));
+      expect(result, isNot(contains('Rp 117.500')));
+      expect(destinationTokens('tarif motor 100cc ke Badung'), ['BADUNG']);
+    });
+
+    test('semua kapasitas motor memilih kolom yang tepat', () {
+      for (final cc in [100, 125, 150, 250, 500, 750]) {
+        final result = buildFareAnswer('motor ${cc}cc Badung', vehicleRow);
+        expect(result, contains('motor ${cc}cc'));
+        expect(result, contains('per unit'));
+      }
+    });
+
+    test('sepeda memakai tarif tetap per unit', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [vehicleRow], total: 1));
+      final result = await engine.answer('ongkir sepeda ke Badung');
+      expect(result, contains('sepeda: Rp 85.000 per unit'));
+      expect(result, isNot(contains('/kg')));
+    });
+
+    test('kapasitas motor yang tidak disebut meminta klarifikasi', () {
+      expect(buildFareAnswer('tarif motor ke Badung', vehicleRow),
+          contains('Sebutkan kapasitas motor'));
+    });
+
+    test('tarif kendaraan kosong atau nol dinyatakan tidak tersedia', () {
+      final row = <String, Object?>{...vehicleRow, 'motor_100cc': '0'};
+      expect(buildFareAnswer('motor 100cc Badung', row),
+          contains('Tarif motor 100cc tidak tersedia'));
+    });
+  });
+
   group('pertanyaan kargo', () {
     test('tujuan cocok dengan berat dan layanan', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
