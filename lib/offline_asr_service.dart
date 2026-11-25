@@ -63,7 +63,7 @@ class OfflineAsrService {
   Future<bool> get isModelInstalled async {
     final directory = await _modelDirectory();
     for (final model in _modelFiles) {
-      final file = File(p.join(modelDirectory.path, model.name));
+      final file = File(p.join(directory.path, model.name));
       if (!await file.exists() || await file.length() != model.bytes) {
         return false;
       }
@@ -91,7 +91,7 @@ class OfflineAsrService {
         ..idleTimeout = const Duration(seconds: 45);
 
       for (final model in _modelFiles) {
-        final target = File(p.join(modelDirectory!.path, model.name));
+        final target = File(p.join(modelDirectory.path, model.name));
         if (await target.exists() && await target.length() == model.bytes) {
           final digest = await sha256.bind(target.openRead()).first;
           if (digest.toString() == model.sha256) {
