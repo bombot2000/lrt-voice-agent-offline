@@ -544,4 +544,48 @@ void main() {
       expect(engine.hasPendingChoice, true);
     });
   });
+
+  group('regresi tarif kendaraan dan dialog lanjutan', () {
+    const rowA = <String, Object?>{
+      'province': 'BALI', 'city': 'BADUNG',
+      'district': 'ABIANSEMAL', 'village': 'ABIANSEMAL',
+      'motor_125cc': '135000', 'sepeda': '85000',
+      'min_reg': '25', 'tarif_reg': '4700',
+    };
+    const rowB = <String, Object?>{
+      'province': 'BALI', 'city': 'BADUNG',
+      'district': 'ABIANSEMAL', 'village': 'SIBANG KAJA',
+      'motor_125cc': '145000', 'sepeda': '90000',
+      'min_reg': '25', 'tarif_reg': '5200',
+    };
+
+    test('sepeda dapat diberikan setelah tujuan ambigu dan tetap tarif per unit', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [rowA, rowB], total: 2));
+      await engine.ask('ongkir sepeda ke Abiansemal');
+      final refined = await engine.ask('sepeda');
+      expect(refined.choices.length, 2);
+      final selected = engine.select(refined.choices.last);
+      expect(selected.text, contains('sepeda: Rp 90.000 per unit'));
+      expect(selected.text, isNot(contains('/kg')));
+    });
+
+    test('tarif motor kosong tidak jatuh ke tarif Reguler atau kapasitas lain', () {
+      final row = <String, Object?>{
+        ...rowA,
+        'motor_125cc': '',
+        'motor_100cc': '125000',
+      };
+      final answer = buildFareAnswer('motor 125cc Badung 20 kg', row);
+      expect(answer, contains('Tarif motor 125cc tidak tersedia'));
+      expect(answer, isNot(contains('Rp 125.000')));
+      expect(answer, isNot(contains('Rp 117.500')));
+    });
+
+    test('kapasitas motor tetap wajib meski berat disebut', () {
+      final answer = buildFareAnswer('ongkir motor ke Badung 20 kg', rowA);
+      expect(answer, contains('Sebutkan kapasitas motor'));
+      expect(answer, isNot(contains('Reguler:')));
+    });
+  });
+
 }
