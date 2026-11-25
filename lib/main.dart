@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'voice_controller.dart';
+
 import 'chat_message.dart';
 import 'chat_bubble.dart';
 import 'asr_settings_dialog.dart';
@@ -9,9 +11,6 @@ import 'answer_engine.dart';
 import 'offline_asr_service.dart';
 import 'next_cargo_tariff_service.dart';
 import 'tariff_utils.dart' show formatTypedReply, spokenVersion;
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_recognition_error.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 void main() {
   runApp(MaterialApp(
@@ -59,16 +58,11 @@ class CargoVoiceAgentPage extends StatefulWidget {
 }
 
 class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
-  static const String _defaultStatus =
-      'Mode Offline • Tekan mikrofon atau ketik pertanyaan';
-  static const String _listeningStatus = 'Mendengarkan...';
-
-  final stt.SpeechToText _speech = stt.SpeechToText();
+  final VoiceController _voice = VoiceController();
   final OfflineAsrService _offlineAsr = OfflineAsrService();
   Timer? _offlineRecordTimer;
   bool _useOfflineAsr = false;
   bool _localRecording = false;
-  final FlutterTts _tts = FlutterTts();
   final ScrollController _scrollController = ScrollController();
   final AnswerEngine _engine = AnswerEngine(const SqliteTariffLookup());
   final TextEditingController _textController = TextEditingController();
@@ -79,10 +73,6 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   // Jawaban dibacakan hanya bila pertanyaan terakhir datang lewat suara.
   bool _voiceMode = true;
 
-  bool _speechReady = false;
-  bool _isListening = false;
-  bool _isSpeaking = false;
-  String _statusText = _defaultStatus;
 
   // Locale id yang dipakai (di Android bisa "id_ID" atau "in_ID").
   String _localeId = 'id_ID';
@@ -101,7 +91,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   @override
   void initState() {
     super.initState();
-    _initVoice();
+    _voice.addListener(_onVoiceChanged);
+    _voice.initialize();
   }
 
   Future<void> _openFareManager() async {
@@ -110,107 +101,12 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     ));
   }
 
-  Future<void> _initVoice() async {
-    await _initSpeech();
-    await _initTts();
-  }
-
-  Future<bool> _initSpeech() async {
-    try {
-      _speechReady = await _speech.initialize(
-        onStatus: _onSpeechStatus,
-        onError: _onSpeechError,
-      );
-    } catch (_) {
-      _speechReady = false;
-    }
-
-    if (!_speechReady) {
-      _setStatus('Layanan suara tidak tersedia. Periksa izin mikrofon.');
-      return false;
-    }
-
-    try {
-      final locales = await _speech.locales();
-      final match = locales.where((l) {
-        final id = l.localeId.toLowerCase().replaceAll('-', '_');
-        return id == 'id_id' || id == 'in_id';
-      });
-      if (match.isNotEmpty) {
-        _localeId = match.first.localeId;
-      } else {
-        _setStatus(
-            'Bahasa Indonesia belum terdeteksi. Unduh paket bahasa Indonesia offline di pengaturan suara perangkat.');
-      }
-    } catch (_) {
-      // Pakai default id_ID.
-    }
-    return true;
-  }
-
-  Future<void> _initTts() async {
-    try {
-      final available = await _tts.isLanguageAvailable('id-ID');
-      if (available != true && available != 1) {
-        _setStatus(
-            'Suara Indonesia (TTS) belum terpasang. Pasang data suara bahasa Indonesia di pengaturan perangkat.');
-      }
-      await _tts.setLanguage('id-ID');
-      await _tts.setSpeechRate(0.5);
-      await _tts.setPitch(1.0);
-      await _tts.awaitSpeakCompletion(true);
-
-      _tts.setStartHandler(() {
-        if (mounted) setState(() => _isSpeaking = true);
-      });
-      _tts.setCompletionHandler(() {
-        if (mounted) setState(() => _isSpeaking = false);
-      });
-      _tts.setCancelHandler(() {
-        if (mounted) setState(() => _isSpeaking = false);
-      });
-      _tts.setErrorHandler((_) {
-        if (mounted) setState(() => _isSpeaking = false);
-      });
-    } catch (_) {
-      // TTS gagal diinisialisasi; aplikasi tetap bisa menampilkan teks.
-    }
-  }
-
-  void _setStatus(String text) {
+  void _onVoiceChanged() {
     if (!mounted) return;
-    setState(() => _statusText = text);
+    setState(() {});
   }
 
-  void _onSpeechStatus(String status) {
-    if (status == 'done' || status == 'notListening') {
-      if (!mounted) return;
-      setState(() {
-        _isListening = false;
-        if (_statusText == _listeningStatus) _statusText = _defaultStatus;
-      });
-    }
-  }
-
-  void _onSpeechError(SpeechRecognitionError error) {
-    final msg = error.errorMsg;
-    String text;
-    if (msg.contains('language')) {
-      text =
-          'Paket bahasa Indonesia offline belum terpasang. Unduh di pengaturan suara/Google di perangkat.';
-    } else if (msg == 'error_permission') {
-      text = 'Izin mikrofon ditolak. Aktifkan di pengaturan aplikasi.';
-    } else if (msg == 'error_no_match' || msg == 'error_speech_timeout') {
-      text = 'Suara tidak terdengar jelas. Coba lagi.';
-    } else {
-      text = 'Terjadi kesalahan suara ($msg). Coba lagi.';
-    }
-    if (!mounted) return;
-    setState(() {
-      _isListening = false;
-      _statusText = text;
-    });
-  }
+  void _setStatus(String text) => _voice.setStatus(text);
 
   Future<void> _openAsrSettings() async {
     await showDialog<void>(
@@ -237,8 +133,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       if (!mounted) return;
       setState(() {
         _localRecording = true;
-        _isListening = true;
-        _statusText = 'Mendengarkan offline... tekan mikrofon untuk selesai';
+        _voice.isListening = true;
+        _voice.statusText = 'Mendengarkan offline... tekan mikrofon untuk selesai';
       });
       _offlineRecordTimer?.cancel();
       _offlineRecordTimer = Timer(const Duration(seconds: 25), () {
@@ -272,57 +168,20 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   }
 
   Future<void> _toggleListening() async {
-    if (_isSpeaking) {
-      await _tts.stop();
-      if (mounted) setState(() => _isSpeaking = false);
-    }
+    if (_voice.isSpeaking) await _voice.stopSpeaking();
 
     if (_useOfflineAsr) {
       await _toggleOfflineListening();
       return;
     }
 
-    if (_isListening) {
-      await _speech.stop();
-      if (!mounted) return;
-      setState(() {
-        _isListening = false;
-        _statusText = _defaultStatus;
-      });
+    if (_voice.isListening) {
+      await _voice.stopListening();
       return;
     }
-
-    if (!_speechReady) {
-      final ok = await _initSpeech();
-      if (!ok) return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isListening = true;
-      _statusText = _listeningStatus;
-    });
-
-    await _speech.listen(
-      listenOptions: stt.SpeechListenOptions(
-        localeId: _localeId,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        onDevice: true,
-        partialResults: true,
-        cancelOnError: true,
-      ),
-      onResult: (result) {
-        if (!mounted) return;
-        setState(() {
-          _statusText = result.recognizedWords.isEmpty
-              ? _listeningStatus
-              : result.recognizedWords;
-        });
-        if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-          _handleQuery(result.recognizedWords.trim(), speak: true);
-        }
-      },
+    await _voice.startListening(
+      onPartialResult: _setStatus,
+      onFinalResult: (query) => _handleQuery(query, speak: true),
     );
   }
 
@@ -366,7 +225,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     // yang sama dua kali atau meninggalkan pilihan lama di layar.
     if (!_choices.contains(choice)) return;
     setState(() => _choices = const []);
-    if (_isSpeaking) await _tts.stop();
+    if (_voice.isSpeaking) await _voice.stopSpeaking();
     final selectedLabel = 'Tujuan dipilih: ${choice.label}';
     _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
       try {
@@ -389,7 +248,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     final query = raw.trim();
     if (query.isEmpty) return;
     _textController.clear();
-    if (_isSpeaking) await _tts.stop();
+    if (_voice.isSpeaking) await _voice.stopSpeaking();
     if (_localRecording) {
       _offlineRecordTimer?.cancel();
       await _offlineAsr.cancelRecording();
@@ -400,8 +259,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         });
       }
     } else if (_isListening) {
-      await _speech.cancel();
-      if (mounted) setState(() => _isListening = false);
+      await _voice.cancelListening();
     }
     await _handleQuery(query, speak: false);
   }
@@ -413,18 +271,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         speak ? reply.text : formatTypedReply(reply.text),
       ));
       _choices = reply.choices;
-      _statusText = _defaultStatus;
+      _statusText = VoiceController.defaultStatus;
     });
     _scrollToBottom();
-    if (speak) _speak(reply.text);
-  }
-
-  Future<void> _speak(String text) async {
-    try {
-      await _tts.speak(spokenVersion(text));
-    } catch (_) {
-      // Jawaban tetap tampil sebagai teks.
-    }
+    if (speak) _voice.speak(spokenVersion(reply.text));
   }
 
   void _scrollToBottom() {
@@ -442,8 +292,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   void dispose() {
     _offlineRecordTimer?.cancel();
     unawaited(_offlineAsr.dispose());
-    _speech.cancel();
-    _tts.stop();
+    _voice.removeListener(_onVoiceChanged);
+    _voice.dispose();
     _scrollController.dispose();
     _textController.dispose();
     super.dispose();
@@ -456,7 +306,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         ? 'Merekam suara offline • ketuk untuk selesai'
         : _isListening
             ? 'Sedang mendengarkan • ketuk untuk berhenti'
-            : _isSpeaking
+            : _voice.isSpeaking
                 ? 'Jawaban sedang dibacakan'
                 : _statusText;
 
