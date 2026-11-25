@@ -357,14 +357,3 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
 
   return [prefix, ...lines, ...extras].join(' ');
 }
-).hasMatch(rawLead)
-      ? formatPlainNumber(parseTariffNumber(rawLead) ?? double.nan)
-      : rawLead;
-  if (lead.isNotEmpty && lead != '-' && lead != 'NaN') {
-    extras.add('Lead time $lead hari.');
-  }
-  final handler = (r['handler'] ?? '').toString().trim();
-  if (handler.isNotEmpty && handler != '-') extras.add('Handler $handler.');
-
-  return [prefix, ...lines, ...extras].join(' ');
-}
