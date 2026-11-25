@@ -82,10 +82,9 @@ String _indonesianIntegerWords(int value) {
   return value.toString();
 }
 
-/// Teks TTS dipisahkan dari teks yang ditampilkan pada chat.
-/// Mengubah nama wilayah dari sumber uppercase menjadi Title Case.
+/// Format nama wilayah dan susunan alamat tujuan.
 String formatRegionName(Object? value) {
-  final raw = (value ?? '').toString().trim().replaceAll(RegExp(r'\\s+'), ' ');
+  final raw = (value ?? '').toString().trim().replaceAll(RegExp(r'\s+'), ' ');
   if (raw.isEmpty || raw == '-') return '';
   return raw.toLowerCase().split(' ').map((word) {
     if (word.isEmpty) return word;
@@ -93,7 +92,6 @@ String formatRegionName(Object? value) {
   }).join(' ');
 }
 
-/// Urutan wilayah yang alami untuk dibaca dan ditampilkan.
 String formatDestination({
   Object? village,
   Object? district,
@@ -105,12 +103,28 @@ String formatDestination({
     .toList()
     .join(', ');
 
+/// Teks TTS dipisahkan dari teks yang ditampilkan pada chat.
 String spokenVersion(String text) {
-  final result = text.replaceAllMapped(RegExp(r'\bRp\s*(\d{1,3}(?:\.\d{3})*|\d+)(?![\d.]\d)'), (match) {
-    final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
-    return amount == null ? match.group(0)! : '${_indonesianIntegerWords(amount)} rupiah';
-  });
+  final result = text.replaceAllMapped(
+    RegExp(r'\bRp\s*(\d{1,3}(?:\.\d{3})*|\d+)(?![\d.]\d)'),
+    (match) {
+      final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
+      return amount == null
+          ? match.group(0)!
+          : '${_indonesianIntegerWords(amount)} rupiah';
+    },
+  );
+  const tierWords = {'1': 'satu', '2': 'dua', '3': 'tiga'};
   return result
+      .replaceAllMapped(
+        RegExp(r'\bKab\.\s*', caseSensitive: false),
+        (_) => 'Kabupaten ',
+      )
+      .replaceAllMapped(
+        RegExp(r'\bSP([123])\b', caseSensitive: false),
+        (match) => 'S P ${tierWords[match.group(1)]}',
+      )
+      .replaceAll('=', ' sama dengan ')
       .replaceAll('×', ' kali ')
       .replaceAll('/kg', ' per kilogram')
       .replaceAll(RegExp(r'\bkg\b', caseSensitive: false), 'kilogram')
