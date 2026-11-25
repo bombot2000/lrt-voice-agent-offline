@@ -377,8 +377,12 @@ void main() {
       expect(regular, isNot(contains('Rp 1.950')));
 
       final fiveKg = await engine.answer('Wonosobo Wonosobo 5 kg');
-      expect(fiveKg, contains('5 kg × Rp 3.900/kg = Rp 19.500'));
+      expect(fiveKg, contains('berat aktual 5 kg, minimum tagihan 10 kg'));
+      expect(fiveKg, contains('Berat tagihan 10 kg × Rp 3.900/kg = Rp 39.000'));
       expect(fiveKg, isNot(contains('Reguler')));
+
+      final oneKg = await engine.answer('Wonosobo Wonosobo 1 kg');
+      expect(oneKg, contains('Berat tagihan 10 kg × Rp 3.900/kg = Rp 39.000'));
 
       final tenKg = await engine.answer('Wonosobo Wonosobo 10 kg');
       expect(tenKg, contains('10 kg × Rp 3.900/kg = Rp 39.000'));
