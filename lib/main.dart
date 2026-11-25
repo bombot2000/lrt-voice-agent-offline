@@ -557,7 +557,6 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                 }
                 final messageIndex = index - (isFirstMessage ? 1 : 0);
                 final msg = _messages[messageIndex];
-                final isUser = msg.isUser;
                 return ChatBubble(message: msg);
               },
             ),
