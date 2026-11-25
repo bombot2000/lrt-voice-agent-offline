@@ -83,6 +83,28 @@ String _indonesianIntegerWords(int value) {
 }
 
 /// Teks TTS dipisahkan dari teks yang ditampilkan pada chat.
+/// Mengubah nama wilayah dari sumber uppercase menjadi Title Case.
+String formatRegionName(Object? value) {
+  final raw = (value ?? '').toString().trim().replaceAll(RegExp(r'\\s+'), ' ');
+  if (raw.isEmpty || raw == '-') return '';
+  return raw.toLowerCase().split(' ').map((word) {
+    if (word.isEmpty) return word;
+    return word[0].toUpperCase() + word.substring(1);
+  }).join(' ');
+}
+
+/// Urutan wilayah yang alami untuk dibaca dan ditampilkan.
+String formatDestination({
+  Object? village,
+  Object? district,
+  Object? city,
+  Object? province,
+}) => [village, district, city, province]
+    .map(formatRegionName)
+    .where((part) => part.isNotEmpty)
+    .toList()
+    .join(', ');
+
 String spokenVersion(String text) {
   final result = text.replaceAllMapped(RegExp(r'\bRp\s*(\d{1,3}(?:\.\d{3})*|\d+)(?![\d.]\d)'), (match) {
     final amount = int.tryParse(match.group(1)!.replaceAll('.', ''));
@@ -277,7 +299,7 @@ String formatTypedReply(String text) {
   final hasWeight = route.group(3) != null;
   final output = <String>[
     hasWeight ? 'PERKIRAAN ONGKIR NEXT CARGO' : 'INFORMASI TARIF NEXT CARGO',
-    'Rute: ${route.group(1)} → ${route.group(2)}',
+    'Tujuan: ${route.group(1) == null ? route.group(2) : route.group(2)}',
     if (hasWeight) 'Berat: ${route.group(3)} kg',
   ];
   final serviceLines = <String>[];
