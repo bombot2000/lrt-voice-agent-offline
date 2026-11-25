@@ -434,7 +434,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _isListening
+                          color: (_voice.isListening || _localRecording)
                               ? const Color(0xFFE53935)
                               : _voice.isSpeaking
                                   ? Colors.orange
@@ -450,10 +450,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: _isListening
+                            color: (_voice.isListening || _localRecording)
                                 ? const Color(0xFFB71C1C)
                                 : const Color(0xFF62666D),
-                            fontWeight: _isListening
+                            fontWeight: (_voice.isListening || _localRecording)
                                 ? FontWeight.w700
                                 : FontWeight.w500,
                           ),
@@ -502,11 +502,11 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                       Tooltip(
                         message: _localRecording
                             ? 'Selesai merekam'
-                            : _isListening
+                            : (_voice.isListening || _localRecording)
                                 ? 'Hentikan mikrofon'
                                 : 'Tanya dengan suara',
                         child: Material(
-                          color: _isListening
+                          color: (_voice.isListening || _localRecording)
                               ? const Color(0xFFB71C1C)
                               : const Color(0xFFFFE5E2),
                           shape: const CircleBorder(),
@@ -517,8 +517,8 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                               width: 52,
                               height: 52,
                               child: Icon(
-                                _isListening ? Icons.stop_rounded : Icons.mic_rounded,
-                                color: _isListening
+                                (_voice.isListening || _localRecording) ? Icons.stop_rounded : Icons.mic_rounded,
+                                color: (_voice.isListening || _localRecording)
                                     ? Colors.white
                                     : const Color(0xFFB71C1C),
                                 size: 26,
