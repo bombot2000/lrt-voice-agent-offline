@@ -63,7 +63,7 @@ class OfflineAsrService {
   Future<bool> get isModelInstalled async {
     final directory = await _modelDirectory();
     for (final model in _modelFiles) {
-      final file = File(p.join(directory.path, model.name));
+      final file = File(p.join(modelDirectory.path, model.name));
       if (!await file.exists() || await file.length() != model.bytes) {
         return false;
       }
@@ -79,12 +79,13 @@ class OfflineAsrService {
     if (_busy) throw StateError('Proses pengenalan suara sedang berjalan.');
     _busy = true;
     HttpClient? client;
+    Directory? modelDirectory;
     var completedBytes = 0;
 
     try {
       // Keep setup inside the guarded block so filesystem failures cannot
       // leave the service permanently marked as busy.
-      final directory = await _modelDirectory();
+      modelDirectory = await _modelDirectory();
       client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 30)
         ..idleTimeout = const Duration(seconds: 45);
@@ -141,9 +142,18 @@ class OfflineAsrService {
         onProgress?.call(completedBytes, _totalBytes);
       }
     } catch (_) {
-      for (final model in _modelFiles) {
-        final partial = File(p.join(directory.path, model.name + '.part'));
-        if (await partial.exists()) await partial.delete();
+      // Directory creation itself can fail; clean partial downloads only
+      // after the model directory has been resolved successfully.
+      final directory = modelDirectory;
+      if (directory != null) {
+        for (final model in _modelFiles) {
+          try {
+            final partial = File(p.join(directory.path, model.name + '.part'));
+            if (await partial.exists()) await partial.delete();
+          } on FileSystemException {
+            // Preserve the original download/setup error.
+          }
+        }
       }
       rethrow;
     } finally {
