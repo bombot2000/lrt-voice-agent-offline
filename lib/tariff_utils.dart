@@ -194,7 +194,7 @@ List<String> destinationTokens(String query) {
       .replaceAll(RegExp(r'\bseratus\b'), 'se ratus')
       .replaceAll(RegExp(r'\bseribu\b'), 'se ribu')
       .replaceAll(
-    RegExp(r'\b(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*\s*(?:kg|kilo(?:gram)?)\b',
+    RegExp(r'(?:\d+(?:[.,]\d+)?|(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma)(?:[\s-]+(?:nol|kosong|se|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|koma))*)\s*(?:kg|kilo(?:gram)?)\b',
     caseSensitive: false,
   ), ' ');
   final tokens = withoutWeight.toUpperCase()
