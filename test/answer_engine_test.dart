@@ -6,11 +6,13 @@ class FakeLookup implements TariffLookup {
   final List<Map<String, Object?>> rows;
   final int total;
   final bool failOnFind;
+  final List<String> queries = <String>[];
   FakeLookup({this.rows = const [], this.total = 0, this.failOnFind = false});
 
   // Meniru pencarian SQLite: semua kata tujuan harus ada di alamat.
   @override
   Future<List<Map<String, Object?>>> find(String query) async {
+    queries.add(query);
     if (failOnFind) throw StateError('db error');
     var tokens = destinationTokens(query);
     if (tokens.isEmpty && query.toLowerCase().contains('malang')) {
@@ -439,6 +441,18 @@ void main() {
       final r = await engine.ask('ongkir ke Atlantis');
       expect(r.text, contains('tersedia untuk 2 tujuan'));
       expect(engine.hasPendingChoice, false);
+    });
+
+    test('follow-up berulang tidak menggandakan konteks pencarian', () async {
+      final lookup = FakeLookup(rows: rows, total: 2);
+      final engine = AnswerEngine(lookup);
+      await engine.ask('ongkir ke Bali 20 kilo');
+      await engine.ask('Badung');
+      final firstRefinement = lookup.queries.last;
+      await engine.ask('Badung');
+      expect(lookup.queries.last, firstRefinement);
+      expect(lookup.queries.last, isNot(contains('Badung Badung')));
+      expect(engine.hasPendingChoice, true);
     });
 
     test('jawaban yang masih ambigu mempertahankan dialog', () async {
