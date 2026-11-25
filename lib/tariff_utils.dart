@@ -313,7 +313,7 @@ String formatTypedReply(String text) {
   final hasWeight = route.group(3) != null;
   final output = <String>[
     hasWeight ? 'PERKIRAAN ONGKIR NEXT CARGO' : 'INFORMASI TARIF NEXT CARGO',
-    'Tujuan: ${route.group(1) == null ? route.group(2) : route.group(2)}',
+    'Tujuan: ${route.group(2)}',
     if (hasWeight) 'Berat: ${route.group(3)} kg',
   ];
   final serviceLines = <String>[];
