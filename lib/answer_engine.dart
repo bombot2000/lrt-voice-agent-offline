@@ -309,12 +309,11 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     return 'Tarif khusus tidak tersedia untuk tujuan $destination.';
   }
 
-  // Kiriman di bawah 10 kg dikenakan minimum 10 kg dari kolom tarif_10kg.
-  // Nilai kolom adalah tarif per kg, sehingga total = 10 kg × tarif_10kg.
+  // Berat sampai dengan 11 kg memakai tarif_10kg berdasarkan berat aktual.
+  // Nilai kolom adalah tarif per kg, sehingga total = berat aktual × tarif_10kg.
   final tarif10 = parseTariffNumber(r['tarif_10kg']);
-  if (weight != null && weight < 10 && tarif10 != null && tarif10 > 0) {
-    const billable = 10;
-    return 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg: berat tagihan 10 kg × ${formatRupiah(tarif10)}/kg = ${formatRupiah(billable * tarif10)} (minimum Tarif 10 kg).';
+  if (weight != null && weight <= 11 && tarif10 != null && tarif10 > 0) {
+    return 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg: ${formatPlainNumber(weight)} kg × ${formatRupiah(tarif10)}/kg = ${formatRupiah(weight * tarif10)} (Tarif 10 kg, berlaku sampai 11 kg).';
   }
 
   final lines = <String>[];
