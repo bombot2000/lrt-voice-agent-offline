@@ -34,6 +34,7 @@ class AnswerEngine {
   final TariffLookup tariffs;
   String _pendingQuery = '';
   String _pendingRootQuery = '';
+  final Set<String> _pendingBaseTokens = <String>{};
   final Set<String> _pendingRefinementTokens = <String>{};
   List<Map<String, Object?>> _pending = const [];
 
@@ -44,6 +45,7 @@ class AnswerEngine {
   void reset() {
     _pendingQuery = '';
     _pendingRootQuery = '';
+    _pendingBaseTokens.clear();
     _pendingRefinementTokens.clear();
     _pending = const [];
   }
@@ -110,7 +112,9 @@ class AnswerEngine {
     if (tokens.isEmpty) return null;
     // Simpan pertanyaan awal sekali saja; follow-up disimpan sebagai token unik.
     // Ini mencegah query tumbuh berulang: "Badung Bali Badung Bali ...".
-    _pendingRefinementTokens.addAll(tokens);
+    _pendingRefinementTokens.addAll(
+      tokens.where((token) => !_pendingBaseTokens.contains(token)),
+    );
     final combined = '$_pendingRootQuery ${_pendingRefinementTokens.join(' ')}'.trim();
     // Cari ulang seluruh database: _pending hanya memuat maksimal 8 pilihan UI.
     final narrowed = await tariffs.find(combined);
@@ -126,6 +130,9 @@ class AnswerEngine {
   Reply _ambiguous(List<Map<String, Object?>> rows, String query) {
     if (_pending.isEmpty) {
       _pendingRootQuery = query;
+      _pendingBaseTokens
+        ..clear()
+        ..addAll(destinationTokens(query));
       _pendingRefinementTokens.clear();
     }
     _pendingQuery = query;
