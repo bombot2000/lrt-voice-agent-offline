@@ -74,9 +74,6 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   bool _voiceMode = true;
 
 
-  // Locale id yang dipakai (di Android bisa "id_ID" atau "in_ID").
-  String _localeId = 'id_ID';
-
   // Guard agar hasil final yang terkirim dua kali tidak diproses ganda.
   String _lastQuery = '';
   DateTime _lastQueryTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -131,11 +128,11 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     try {
       await _offlineAsr.startRecording();
       if (!mounted) return;
-      setState(() {
-        _localRecording = true;
-        _voice.isListening = true;
-        _voice.statusText = 'Mendengarkan offline... tekan mikrofon untuk selesai';
-      });
+      setState(() => _localRecording = true);
+      _voice.setExternalListening(
+        true,
+        status: 'Mendengarkan offline... tekan mikrofon untuk selesai',
+      );
       _offlineRecordTimer?.cancel();
       _offlineRecordTimer = Timer(const Duration(seconds: 25), () {
         if (mounted && _localRecording) _finishOfflineRecording();
@@ -148,11 +145,11 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   Future<void> _finishOfflineRecording() async {
     _offlineRecordTimer?.cancel();
     if (!_localRecording) return;
-    setState(() {
-      _localRecording = false;
-      _isListening = false;
-      _statusText = 'Memproses suara secara offline...';
-    });
+    setState(() => _localRecording = false);
+    _voice.setExternalListening(
+      false,
+      status: 'Memproses suara secara offline...',
+    );
     try {
       final transcript = await _offlineAsr.stopAndTranscribe();
       if (!mounted) return;
@@ -255,10 +252,9 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       if (mounted) {
         setState(() {
           _localRecording = false;
-          _isListening = false;
         });
       }
-    } else if (_isListening) {
+    } else if (_voice.isListening) {
       await _voice.cancelListening();
     }
     await _handleQuery(query, speak: false);
@@ -271,7 +267,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         speak ? reply.text : formatTypedReply(reply.text),
       ));
       _choices = reply.choices;
-      _statusText = VoiceController.defaultStatus;
+      _voice.statusText = VoiceController.defaultStatus;
     });
     _scrollToBottom();
     if (speak) _voice.speak(spokenVersion(reply.text));
