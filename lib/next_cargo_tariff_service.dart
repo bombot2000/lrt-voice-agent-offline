@@ -147,8 +147,20 @@ class NextCargoTariffService {
   static List<List<dynamic>> decode(String name, Uint8List bytes) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.csv')) {
-      final text = utf8
-          .decode(bytes, allowMalformed: true)
+      late final String decoded;
+      try {
+        decoded = utf8.decode(bytes);
+      } on FormatException {
+        throw const FormatException(
+          'CSV bukan UTF-8 yang valid. Ekspor ulang file dari Excel sebagai CSV UTF-8.',
+        );
+      }
+      if (decoded.contains('\uFFFD')) {
+        throw const FormatException(
+          'CSV mengandung karakter pengganti (U+FFFD). Encoding mungkin Windows-1252; simpan ulang sebagai CSV UTF-8.',
+        );
+      }
+      final text = decoded
           .replaceFirst('\uFEFF', '')
           .replaceAll('\r\n', '\n')
           .replaceAll('\r', '\n');

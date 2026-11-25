@@ -14,8 +14,7 @@ class _ModelFile {
   const _ModelFile(this.name, this.bytes, this.sha256);
 
   String get url =>
-      'https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2/' +
-      name;
+      'https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2/$name';
 }
 
 /// Whisper Tiny multilingual INT8. Model disimpan di app-support, bukan APK.
@@ -102,8 +101,7 @@ class OfflineAsrService {
         final response = await request.close().timeout(const Duration(minutes: 3));
         if (response.statusCode != HttpStatus.ok) {
           throw HttpException(
-            'Unduhan ' + model.name + ' gagal (HTTP ' +
-            response.statusCode.toString() + ').',
+            'Unduhan ${model.name} gagal (HTTP ${response.statusCode}).',
           );
         }
 
@@ -181,7 +179,7 @@ class OfflineAsrService {
     final temp = await getTemporaryDirectory();
     _recordingPath = p.join(
       temp.path,
-      'cargo_voice_' + DateTime.now().microsecondsSinceEpoch.toString() + '.pcm',
+      'cargo_voice_${DateTime.now().microsecondsSinceEpoch}.pcm',
     );
     await _recorder.start(
       const RecordConfig(
@@ -192,6 +190,23 @@ class OfflineAsrService {
       path: _recordingPath!,
     );
     _recording = true;
+  }
+
+  /// Converts mono signed PCM16 little-endian bytes to normalized float samples.
+  /// Rejects recordings shorter than 100 ms or with an incomplete sample.
+  static Float32List pcm16leToFloat32(Uint8List bytes) {
+    if (bytes.length.isOdd) {
+      throw const FormatException('Data PCM harus berisi pasangan byte lengkap.');
+    }
+    if (bytes.length < 3200) {
+      throw const FormatException('Rekaman terlalu pendek (minimal 100 ms).');
+    }
+    final data = ByteData.sublistView(bytes);
+    final samples = Float32List(bytes.length ~/ 2);
+    for (var i = 0; i < samples.length; i++) {
+      samples[i] = data.getInt16(i * 2, Endian.little) / 32768.0;
+    }
+    return samples;
   }
 
   Future<String> stopAndTranscribe() async {
@@ -206,13 +221,7 @@ class OfflineAsrService {
       final file = File(path);
       if (!await file.exists()) return '';
       final bytes = await file.readAsBytes();
-      if (bytes.lengthInBytes < 3200 || bytes.length.isOdd) return '';
-
-      final data = ByteData.sublistView(bytes);
-      final samples = Float32List(bytes.length ~/ 2);
-      for (var i = 0; i < samples.length; i++) {
-        samples[i] = data.getInt16(i * 2, Endian.little) / 32768.0;
-      }
+      final samples = pcm16leToFloat32(bytes);
 
       final recognizer = _recognizer;
       if (recognizer == null) return '';

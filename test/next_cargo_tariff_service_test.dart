@@ -11,6 +11,42 @@ void main() {
   const row = 'MALANG KOTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,4700,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750';
   Uint8List bytes(String text) => Uint8List.fromList(utf8.encode(text));
 
+  test('rejects CSV with invalid UTF-8 bytes and explains required encoding', () async {
+    final invalidUtf8 = Uint8List.fromList([
+      ...utf8.encode('$header\n$row\n'),
+      0xC3,
+      0x28,
+    ]);
+    await expectLater(
+      NextCargoTariffService.preview('windows-1252.csv', invalidUtf8),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('CSV UTF-8'),
+        ),
+      ),
+    );
+  });
+
+  test('rejects decoded replacement character U+FFFD in CSV', () async {
+    final replacement = utf8.encode('$header\n$row\n');
+    final bytesWithReplacement = Uint8List.fromList([
+      ...replacement,
+      ...utf8.encode('\uFFFD'),
+    ]);
+    await expectLater(
+      NextCargoTariffService.preview('replacement.csv', bytesWithReplacement),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('U+FFFD'),
+        ),
+      ),
+    );
+  });
+
   test('detects header after title and blank row, retaining NEXT Cargo structure', () async {
     final result = await NextCargoTariffService.preview('sample.csv', bytes('NEXT TARIF 2026-11-21\n\n$header\n$row\n'));
     expect(result.rowCount, 1);

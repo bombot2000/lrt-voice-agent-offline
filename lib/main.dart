@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'chat_message.dart';
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
@@ -126,12 +127,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   DateTime _lastQueryTime = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void> _queryQueue = Future<void>.value();
 
-  final List<Map<String, String>> _messages = [
-    {
-      'role': 'agent',
-      'text':
-          'Halo, saya asisten ongkir NEXT Cargo mode offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo".'
-    }
+  final List<ChatMessage> _messages = [
+    ChatMessage.agent(
+      'Halo, saya asisten ongkir NEXT Cargo mode offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo".',
+    ),
   ];
 
   @override
@@ -531,11 +530,10 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
   void _showReply(String userText, Reply reply, {required bool speak}) {
     setState(() {
-      _messages.add({'role': 'user', 'text': userText});
-      _messages.add({
-        'role': 'agent',
-        'text': speak ? reply.text : formatTypedReply(reply.text),
-      });
+      _messages.add(ChatMessage.user(userText));
+      _messages.add(ChatMessage.agent(
+        speak ? reply.text : formatTypedReply(reply.text),
+      ));
       _choices = reply.choices;
       _statusText = _defaultStatus;
     });
@@ -682,7 +680,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                 }
                 final messageIndex = index - (isFirstMessage ? 1 : 0);
                 final msg = _messages[messageIndex];
-                final isUser = msg['role'] == 'user';
+                final isUser = msg.isUser;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
@@ -727,7 +725,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                           ),
                           child: Text.rich(
                             _formatCargoMessage(
-                              msg['text'] ?? '',
+                              msg.text,
                               isUser: isUser,
                             ),
                             textAlign: TextAlign.start,
