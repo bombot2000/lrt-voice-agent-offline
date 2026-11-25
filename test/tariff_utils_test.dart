@@ -109,6 +109,8 @@ void main() {
           ['ABIANSEMAL']);
       expect(destinationTokens('ongkir ke Abiansemal 10 kg'), ['ABIANSEMAL']);
       expect(destinationTokens('ongkir ke Abiansemal 10kg'), ['ABIANSEMAL']);
+      expect(destinationTokens('ongkir ke Abiansemal 2,5kg'), ['ABIANSEMAL']);
+      expect(destinationTokens('ongkir ke Abiansemal dua puluh lima koma lima kilogram'), ['ABIANSEMAL']);
       expect(destinationTokens('tarif ke Denpasaar lima belas kilo'),
           ['DENPASAAR']);
     });
