@@ -414,7 +414,7 @@ void main() {
       expect(reply.choices.length, districts.length);
       expect(
         reply.choices.map((choice) => choice.label.split(', ').first).toSet(),
-        districts.toSet(),
+        districts.map(formatRegionName).toSet(),
       );
     });
 
@@ -468,7 +468,7 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
       final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
       final answer = engine.select(r.choices.last);
-      expect(answer.text, contains('SIBANG KAJA'));
+      expect(answer.text, contains('Sibang Kaja'));
       expect(answer.text, contains('berat aktual 20 kg'));
       expect(answer.text, contains('Rp 130.000')); // 25 kg x 5.200
       expect(engine.hasPendingChoice, false);
@@ -531,7 +531,7 @@ void main() {
       final afterWeight = await engine.ask('20 kg');
       expect(afterWeight.text, contains('2 tujuan yang cocok'));
       final resolved = await engine.ask('Sibang');
-      expect(resolved.text, contains('SIBANG KAJA'));
+      expect(resolved.text, contains('Sibang Kaja'));
       expect(resolved.text, contains('berat aktual 20 kg'));
       expect(engine.hasPendingChoice, false);
     });
