@@ -1,6 +1,5 @@
 import 'tariff_utils.dart';
 import 'command_parser_service.dart';
-import 'tariff_utils.dart' show formatDestination;
 
 /// Sumber data tarif kargo. Dipisah sebagai antarmuka agar mesin jawaban
 /// bisa diuji tanpa SQLite.
