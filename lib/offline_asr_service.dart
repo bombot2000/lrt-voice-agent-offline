@@ -200,15 +200,27 @@ class OfflineAsrService {
       temp.path,
       'cargo_voice_${DateTime.now().microsecondsSinceEpoch}.pcm',
     );
-    await _recorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: sampleRate,
-        numChannels: 1,
-      ),
-      path: _recordingPath!,
-    );
-    _recording = true;
+    final recordingPath = _recordingPath!;
+    try {
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: sampleRate,
+          numChannels: 1,
+        ),
+        path: recordingPath,
+      );
+      _recording = true;
+    } catch (_) {
+      _recordingPath = null;
+      final file = File(recordingPath);
+      try {
+        if (await file.exists()) await file.delete();
+      } on FileSystemException {
+        // Preserve the recorder startup error.
+      }
+      rethrow;
+    }
   }
 
   /// Converts mono signed PCM16 little-endian bytes to normalized float samples.
@@ -253,9 +265,16 @@ class OfflineAsrService {
         stream.free();
       }
     } finally {
-      final file = File(path);
-      if (await file.exists()) await file.delete();
-      _busy = false;
+      // Cleanup must never leave the service permanently busy if the OS
+      // refuses to remove a temporary recording file.
+      try {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      } on FileSystemException {
+        // The transcription result/error is more important than temp cleanup.
+      } finally {
+        _busy = false;
+      }
     }
   }
 
