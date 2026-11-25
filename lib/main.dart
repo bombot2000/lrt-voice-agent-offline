@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'chat_message.dart';
 import 'chat_bubble.dart';
+import 'asr_settings_dialog.dart';
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
@@ -211,103 +212,16 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   }
 
   Future<void> _openAsrSettings() async {
-    var installed = await _offlineAsr.isModelInstalled;
-    var downloading = false;
-    var progress = 0.0;
-    String? downloadError;
-
-    if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Mesin Suara Offline'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Whisper Tiny multilingual INT8 berjalan langsung di HP. '
-                'Model sekitar 104 MB, diunduh satu kali dan disimpan di penyimpanan aplikasi.',
-              ),
-              const SizedBox(height: 12),
-              Text(installed
-                  ? 'Model sudah terpasang dan siap digunakan.'
-                  : 'Model belum diunduh. Mode suara bawaan tetap tersedia.'),
-              if (downloading) ...[
-                const SizedBox(height: 12),
-                LinearProgressIndicator(value: progress == 0 ? null : progress),
-                const SizedBox(height: 6),
-                Text('${(progress * 100).toStringAsFixed(0)}%'),
-              ],
-              if (downloadError != null) ...[
-                const SizedBox(height: 8),
-                Text(downloadError!, style: const TextStyle(color: Colors.red)),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: downloading ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Tutup'),
-            ),
-            if (!installed)
-              FilledButton(
-                onPressed: downloading
-                    ? null
-                    : () async {
-                        setDialogState(() {
-                          downloading = true;
-                          progress = 0;
-                          downloadError = null;
-                        });
-                        try {
-                          await _offlineAsr.downloadModel(
-                            onProgress: (received, total) {
-                              if (!dialogContext.mounted) return;
-                              setDialogState(() {
-                                progress = total == 0 ? 0 : received / total;
-                              });
-                            },
-                          );
-                          if (!dialogContext.mounted) return;
-                          setDialogState(() {
-                            installed = true;
-                            downloading = false;
-                            progress = 1;
-                          });
-                        } catch (e) {
-                          if (!dialogContext.mounted) return;
-                          setDialogState(() {
-                            downloading = false;
-                            downloadError = 'Unduhan gagal: $e';
-                          });
-                        }
-                      },
-                child: const Text('Unduh ±104 MB'),
-              ),
-            if (installed)
-              FilledButton(
-                onPressed: () {
-                  if (!mounted) return;
-                  setState(() => _useOfflineAsr = true);
-                  Navigator.pop(dialogContext);
-                  _setStatus('Mode suara Whisper offline aktif.');
-                },
-                child: const Text('Aktifkan suara lokal'),
-              ),
-            if (_useOfflineAsr)
-              TextButton(
-                onPressed: () {
-                  if (!mounted) return;
-                  setState(() => _useOfflineAsr = false);
-                  Navigator.pop(dialogContext);
-                  _setStatus(_defaultStatus);
-                },
-                child: const Text('Gunakan suara bawaan'),
-              ),
-          ],
-        ),
+      builder: (_) => AsrSettingsDialog(
+        service: _offlineAsr,
+        useOfflineAsr: _useOfflineAsr,
+        onModeChanged: (enabled) {
+          if (!mounted) return;
+          setState(() => _useOfflineAsr = enabled);
+        },
+        onStatusChanged: _setStatus,
       ),
     );
   }
