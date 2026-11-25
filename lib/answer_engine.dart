@@ -346,8 +346,19 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   if (tarif10 != null && tarif10 > 0) {
     extras.add('Tarif 10 kg ${formatRupiah(tarif10)}.');
   }
-  final lead = (r['lead_time'] ?? '').toString().trim();
-  if (lead.isNotEmpty && lead != '-') extras.add('Lead time $lead hari.');
+  final rawLead = (r['lead_time'] ?? '').toString().trim();
+  final lead = RegExp(r'^\\d+(?:[.,]\\d+)?
+  final handler = (r['handler'] ?? '').toString().trim();
+  if (handler.isNotEmpty && handler != '-') extras.add('Handler $handler.');
+
+  return [prefix, ...lines, ...extras].join(' ');
+}
+).hasMatch(rawLead)
+      ? formatPlainNumber(parseTariffNumber(rawLead) ?? double.nan)
+      : rawLead;
+  if (lead.isNotEmpty && lead != '-' && lead != 'NaN') {
+    extras.add('Lead time $lead hari.');
+  }
   final handler = (r['handler'] ?? '').toString().trim();
   if (handler.isNotEmpty && handler != '-') extras.add('Handler $handler.');
 
