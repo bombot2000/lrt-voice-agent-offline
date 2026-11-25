@@ -169,7 +169,7 @@ num? parseWeight(String query) {
 }
 
 const Set<String> _ignoredWords = {
-  'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari',
+  'tarif', 'khusus', 'ongkir', 'ongkos', 'harga', 'biaya', 'ke', 'dari', 'motor', 'sepeda', 'cc',
   'tujuan', 'menuju', 'pengiriman', 'kirim', 'paket', 'barang', 'malang',
   'provinsi', 'propinsi', 'kota', 'kabupaten', 'kab', 'kecamatan', 'kec', 'kelurahan', 'desa', 'reg', 'reguler',
   'sp1', 'sp2', 'sp3', 'next', 'cargo', 'tolong', 'mohon', 'coba', 'cek',
@@ -202,7 +202,7 @@ List<String> destinationTokens(String query) {
       .replaceAll(RegExp(r'[^A-Z0-9 ]'), ' ')
       .split(RegExp(r'\s+'))
       .map((t) => _commandStem(t.toLowerCase()).toUpperCase())
-      .where((t) => t.length >= 3 &&
+      .where((t) => t.length >= 3 && !t.endsWith('CC') &&
           !RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(t) &&
           !_ignoredWords.contains(t.toLowerCase()))
       .toSet()
