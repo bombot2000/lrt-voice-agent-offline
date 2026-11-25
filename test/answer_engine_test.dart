@@ -413,7 +413,7 @@ void main() {
       final reply = await engine.ask('Malang');
       expect(reply.choices.length, districts.length);
       expect(
-        reply.choices.map((choice) => choice.label.split(', ')[1]).toSet(),
+        reply.choices.map((choice) => choice.label.split(', ').first).toSet(),
         districts.toSet(),
       );
     });
