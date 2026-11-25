@@ -91,7 +91,7 @@ class OfflineAsrService {
         ..idleTimeout = const Duration(seconds: 45);
 
       for (final model in _modelFiles) {
-        final target = File(p.join(directory.path, model.name));
+        final target = File(p.join(modelDirectory!.path, model.name));
         if (await target.exists() && await target.length() == model.bytes) {
           final digest = await sha256.bind(target.openRead()).first;
           if (digest.toString() == model.sha256) {
