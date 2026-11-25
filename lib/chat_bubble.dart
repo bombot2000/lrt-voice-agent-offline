@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'tariff_utils.dart' show formatTypedReply;
 import 'chat_message.dart';
 
 /// Menonjolkan nominal hasil perhitungan tanpa mengubah teks jawaban engine.
