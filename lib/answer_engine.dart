@@ -1,5 +1,6 @@
 import 'tariff_utils.dart';
 import 'command_parser_service.dart';
+import 'tariff_utils.dart' show formatDestination;
 
 /// Sumber data tarif kargo. Dipisah sebagai antarmuka agar mesin jawaban
 /// bisa diuji tanpa SQLite.
@@ -9,7 +10,7 @@ abstract class TariffLookup {
 }
 
 const String _helpAnswer =
-    'Saya bisa menghitung ongkir NEXT Cargo dari MALANG KOTA secara offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo reguler".';
+    'Saya bisa menghitung ongkir NEXT Cargo secara offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo reguler".';
 
 String normalizeQuery(String query) => CommandParserService.normalize(query);
 
@@ -195,9 +196,7 @@ class AnswerEngine {
 }
 
 String _destinationOf(Map<String, Object?> r) =>
-    [r['city'], r['district'], r['village'], r['province']]
-        .where((value) => value != null && value.toString().trim().isNotEmpty)
-        .join(', ');
+    formatDestination(village: r['village'], district: r['district'], city: r['city'], province: r['province']);
 
 /// Menyusun jawaban tarif untuk satu baris tujuan.
 String buildFareAnswer(String query, Map<String, Object?> r) {
@@ -219,7 +218,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     if (rate == null || rate <= 0) {
       return 'Tarif $item tidak tersedia untuk tujuan $destination.';
     }
-    return 'Tarif NEXT Cargo dari MALANG KOTA ke $destination untuk $item: ${formatRupiah(rate)} per unit (tarif tetap, tidak dihitung berdasarkan berat barang).';
+    return 'Tarif NEXT Cargo ke $destination untuk $item: ${formatRupiah(rate)} per unit (tarif tetap, tidak dihitung berdasarkan berat barang).';
   }
 
   final weight = parseWeight(query);
@@ -300,8 +299,8 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   if (wantsSpecial && specialRate != null && specialRate > 0 &&
       regularMinimum != null && regularMinimum > 0) {
     final prefix = weight == null
-        ? 'Tarif NEXT Cargo dari MALANG KOTA ke $destination.'
-        : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke $destination untuk berat ${formatPlainNumber(weight)} kg.';
+        ? 'Tarif NEXT Cargo ke $destination.'
+        : 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg.';
     final billable = weight == null ? regularMinimum : billableWeight(weight, regularMinimum);
     final line = 'Tarif khusus: minimum Reguler ${formatPlainNumber(regularMinimum)} kg, berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(specialRate)}/kg = ${formatRupiah(billable * specialRate)}.';
     return '$prefix $line';
@@ -333,8 +332,8 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   }
 
   final prefix = weight == null
-      ? 'Tarif NEXT Cargo dari MALANG KOTA ke $destination.'
-      : 'Perkiraan ongkir NEXT Cargo dari MALANG KOTA ke $destination untuk berat ${formatPlainNumber(weight)} kg (minimum layanan berlaku).';
+      ? 'Tarif NEXT Cargo ke $destination.'
+      : 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg (minimum layanan berlaku).';
 
   // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
   // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
