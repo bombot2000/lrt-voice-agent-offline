@@ -509,12 +509,32 @@ class NextCargoTariffService {
       args.add('%$district%');
     }
     if (clauses.isEmpty) return [];
+
+    // Prioritaskan kecocokan token sebagai kata/frasa utuh sebelum
+    // substring. Contoh: pencarian BATU menempatkan "KOTA BATU"
+    // di atas "BATUAN" atau "BATURETNO", tanpa menghilangkan fallback fuzzy.
+    final exactParts = <String>[];
+    for (final token in tokens) {
+      final safe = token.toUpperCase().replaceAll("'", "''");
+      for (final field in _addressFields) {
+        exactParts.add(
+          "(UPPER($field) = '$safe' OR "
+          "UPPER($field) LIKE '$safe %' OR "
+          "UPPER($field) LIKE '% $safe' OR "
+          "UPPER($field) LIKE '% $safe %')",
+        );
+      }
+    }
+    final exactRank = exactParts.isEmpty
+        ? '1'
+        : 'CASE WHEN ${exactParts.join(' OR ')} THEN 0 ELSE 1 END';
+
     return db.query(
       'tariffs',
       columns: cols,
       where: clauses.join(' AND '),
       whereArgs: args,
-      orderBy: 'province ASC, city ASC, district ASC, village ASC',
+      orderBy: '$exactRank, province ASC, city ASC, district ASC, village ASC',
       limit: util.kMaxTariffMatches,
     );
   }
