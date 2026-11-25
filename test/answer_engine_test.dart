@@ -295,6 +295,16 @@ void main() {
       expect(a, isNot(contains('Reguler:')));
     });
 
+    test('format berat 10 kg dan 10kg menghasilkan perhitungan yang sama', () async {
+      final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
+      final withSpace = await engine.answer('Bekasi Jati Asih 10 kg');
+      final withoutSpace = await engine.answer('Bekasi Jati Asih 10kg');
+      expect(withSpace, contains('berat aktual 10 kg, berat tagihan 25 kg'));
+      expect(withoutSpace, contains('berat aktual 10 kg, berat tagihan 25 kg'));
+      expect(withoutSpace, contains('Rp 117.500'));
+      expect(withoutSpace, equals(withSpace));
+    });
+
     test('berat di bawah minimum memakai berat minimum layanan', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 10 kg');
