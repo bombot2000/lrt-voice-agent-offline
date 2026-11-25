@@ -55,6 +55,11 @@ void main() {
         'Tarif khusus tiga ribu empat ratus rupiah. Tarif Pakgading tersedia.');
   });
 
+  test('spokenVersion keeps automatic service-tier explanation readable', () {
+    const notice = 'Berat memenuhi minimum SP2, memakai tarif SP2.';
+    expect(spokenVersion(notice), notice);
+  });
+
   test('spokenVersion reads rupiah and tariff operators naturally', () {
     expect(spokenVersion('Rp 117.500 × Rp 4.700/kg'),
         'seratus tujuh belas ribu lima ratus rupiah kali empat ribu tujuh ratus rupiah per kilogram');
