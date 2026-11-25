@@ -206,7 +206,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   // Tarif kendaraan adalah harga tetap per unit dari kolom Excel, bukan tarif/kg.
   final lowerQuery = query.toLowerCase();
   final wantsBicycle = RegExp(r'\bsepeda\b').hasMatch(lowerQuery);
-  final motorMatch = RegExp(r'\bmotor\s*(100|125|150|250|500|750)\s*(?:cc)?\b')
+  final motorMatch = RegExp(r'(?:\bmotor\s*)?\b(100|125|150|250|500|750)\s*(?:cc)?\b')
       .firstMatch(lowerQuery);
   final mentionsMotor = RegExp(r'\bmotor\b').hasMatch(lowerQuery);
   if (wantsBicycle || mentionsMotor) {
