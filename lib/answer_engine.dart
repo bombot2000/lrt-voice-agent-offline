@@ -115,7 +115,7 @@ class AnswerEngine {
     // misalnya "20 kg" atau "125cc", tanpa mengulang nama tujuan.
     final hasWeightDetail = parseWeight(query) != null;
     final hasVehicleDetail = RegExp(
-      r'\\b(?:motor\\s*)?(?:100|125|150|250|500|750)\\s*cc\\b|\\bsepeda\\b',
+      r'\b(?:motor\s*)?(?:100|125|150|250|500|750)\s*cc\b|\bsepeda\b',
       caseSensitive: false,
     ).hasMatch(query);
     if (tokens.isEmpty && !hasWeightDetail && !hasVehicleDetail) return null;
