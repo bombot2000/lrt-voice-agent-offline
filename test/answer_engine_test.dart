@@ -389,8 +389,16 @@ void main() {
       expect(elevenKg, isNot(contains('Reguler')));
 
       final twelveKg = await engine.answer('Wonosobo Wonosobo 12 kg');
-      expect(twelveKg, contains('Reguler: berat aktual 12 kg, berat tagihan 20 kg'));
-      expect(twelveKg, contains('Rp 54.000'));
+      expect(twelveKg, contains('12 kg × Rp 3.900/kg = Rp 46.800'));
+      expect(twelveKg, isNot(contains('Reguler')));
+
+      final thirteenKg = await engine.answer('Wonosobo Wonosobo 13 kg');
+      expect(thirteenKg, contains('13 kg × Rp 3.900/kg = Rp 50.700'));
+      expect(thirteenKg, isNot(contains('Reguler')));
+
+      final fourteenKg = await engine.answer('Wonosobo Wonosobo 14 kg');
+      expect(fourteenKg, contains('Reguler: berat aktual 14 kg, berat tagihan 20 kg'));
+      expect(fourteenKg, contains('Rp 54.000'));
 
       final special = await engine.answer('Wonosobo Wonosobo tarif khusus');
       expect(special, contains('Tarif khusus: minimum Reguler 20 kg'));
