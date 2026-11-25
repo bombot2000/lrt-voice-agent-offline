@@ -181,7 +181,7 @@ void main() {
     );
     final parsed = await NextCargoTariffService.parse(
       'batu.csv',
-      bytes('$header\\n${[...substringRows, exactRow].join('\\n')}'),
+      bytes('$header\n${[...substringRows, exactRow].join('\n')}'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
