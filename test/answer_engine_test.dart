@@ -460,7 +460,7 @@ void main() {
       final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
       expect(r.text, contains('2 tujuan yang cocok'));
       expect(r.choices.length, 2);
-      expect(r.choices.first.label, 'BADUNG, ABIANSEMAL, ABIANSEMAL, BALI');
+      expect(r.choices.first.label, 'Abiansemal, Abiansemal, Badung, Bali');
       expect(engine.hasPendingChoice, true);
     });
 
@@ -478,7 +478,7 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
       final first = await engine.ask('ongkir ke Abiansemal 20 kilo');
       final selected = engine.select(first.choices.last);
-      expect(selected.text, contains('SIBANG KAJA'));
+      expect(selected.text, contains('Sibang Kaja'));
       expect(engine.hasPendingChoice, false);
 
       final next = await engine.ask('ongkir ke Atlantis 5 kg');
@@ -492,7 +492,7 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: rows, total: 2));
       await engine.ask('ongkir ke Abiansemal 20 kilo');
       final r = await engine.ask('Sibang');
-      expect(r.text, contains('SIBANG KAJA'));
+      expect(r.text, contains('Sibang Kaja'));
       expect(r.text, contains('berat aktual 20 kg'));
       expect(r.choices, isEmpty);
       expect(engine.hasPendingChoice, false);
@@ -512,7 +512,7 @@ void main() {
       final first = await engine.ask('ongkir ke Badung 20 kilo');
       expect(first.choices.length, 6);
       final narrowed = await engine.ask('Sibang');
-      expect(narrowed.text, contains('SIBANG KAJA'));
+      expect(narrowed.text, contains('Sibang Kaja'));
       expect(narrowed.text, contains('berat aktual 20 kg'));
     });
 
