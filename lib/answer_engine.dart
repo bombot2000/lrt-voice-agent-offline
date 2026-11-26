@@ -259,7 +259,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   // terpenuhi. Berat 30 kg memakai Reguler min. 20 kg; SP1 min. 200 kg
   // belum berlaku dan tidak boleh ikut dihitung.
   String? selectedService;
-  String? minimumNotice;
   if (weight != null) {
     final eligible = services
         .map((service) => (
@@ -271,25 +270,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
             service.minimum! > 0 && service.rate! > 0 && weight >= service.minimum!)
         .toList()
       ..sort((a, b) => b.minimum!.compareTo(a.minimum!));
-
-    num? requestedMinimum;
-    if (requested != null) {
-      for (final service in services) {
-        if (service.$1 == requested) {
-          requestedMinimum = parseTariffNumber(r[service.$2]);
-          break;
-        }
-      }
-    }
-
-    if (requested != null && requestedMinimum != null && requestedMinimum > weight && eligible.isNotEmpty) {
-      minimumNotice =
-          '$requested belum berlaku karena minimum ${formatPlainNumber(requestedMinimum)} kg; digunakan layanan dengan minimum yang sudah terpenuhi.';
-    } else if (requested != null && eligible.isNotEmpty &&
-        eligible.first.label != requested) {
-      minimumNotice =
-          'Berat memenuhi minimum ${eligible.first.label}, memakai tarif ${eligible.first.label}.';
-    }
 
     // Berat aktual menentukan satu kelompok tertinggi yang sudah memenuhi
     // minimum. Penyebutan layanan di pertanyaan tidak boleh memaksa tarif
@@ -370,8 +350,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   }
 
   if (lines.isEmpty) {
-    final unavailable = requested ?? selectedService;
-    return 'Tarif $unavailable tidak tersedia untuk tujuan $destination. Data minimum atau tarif layanan belum lengkap.';
+    return 'Tarif Reguler tidak tersedia untuk tujuan $destination. Data minimum atau tarif belum lengkap.';
   }
 
   // Format ringkas untuk jawaban yang menyertakan berat.
@@ -387,7 +366,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
       final billable = billableWeight(weight, minimum);
       tariffLines.add(
-        '$label: berat aktual ${formatPlainNumber(weight)} kg, '
+        'Reguler: berat aktual ${formatPlainNumber(weight)} kg, '
         'berat tagihan ${formatPlainNumber(billable)} kg',
       );
       tariffLines.add(
@@ -405,7 +384,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       '💰 Tarif Pengiriman:',
       ...tariffLines,
-      if (minimumNotice != null) 'Catatan: $minimumNotice',
+      'Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
@@ -421,7 +400,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     final rate = parseTariffNumber(r[rateKey]);
     if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
     tariffLines.add(
-      '- $label ${formatPlainNumber(minimum)} kg: ${formatRupiah(minimum * rate)}, '
+      '- Reguler (minimum ${formatPlainNumber(minimum)} kg): ${formatRupiah(minimum * rate)}, '
       'per kg selanjutnya ${formatRupiah(rate)}',
     );
   }
@@ -434,6 +413,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     '',
     '💰 Tarif Pengiriman:',
     ...tariffLines,
+    'Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.',
     '',
     if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
     if (handler.isNotEmpty) '📍 Handler: $handler',
