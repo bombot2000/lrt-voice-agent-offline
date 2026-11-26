@@ -7,7 +7,7 @@ import 'chat_message.dart';
 /// Menonjolkan nominal hasil perhitungan tanpa mengubah teks jawaban engine.
 TextSpan formatCargoMessage(String message, {required bool isUser}) {
   final baseColor = isUser ? Colors.white : const Color(0xFF252525);
-  final totalPattern = RegExp(r'= (Rp [0-9.]+)');
+  final totalPattern = RegExp(r'(?:= |(?:Estimasi|Perkiraan) ongkir: )(Rp [0-9.]+)');
   final matches = totalPattern.allMatches(message).toList();
   if (isUser || matches.isEmpty) {
     return TextSpan(
