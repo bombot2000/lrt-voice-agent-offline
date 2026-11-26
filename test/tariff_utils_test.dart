@@ -50,6 +50,19 @@ void main() {
     );
   });
 
+  test('formatTypedReply tetap mempertahankan baris saat dipanggil dua kali', () {
+    const raw = '📦 INFORMASI TARIF NEXT CARGO\\nTujuan: Pakisaji, Kabupaten Malang, Jawa Timur\\n\\n💰 Tarif Pengiriman:\\nBerat aktual: 30 kg\\nBerat tagihan: 30 kg\\nLayanan: Reguler\\nTarif per kg: Rp 4.700\\nEstimasi ongkir: Rp 141.000\\nKeterangan Reguler: Ketentuan SP1, SP2, dan SP3 sudah termasuk dalam perhitungan Reguler.';
+    final once = formatTypedReply(raw);
+    final twice = formatTypedReply(once);
+    expect(once, contains('\\nTujuan:'));
+    expect(once, contains('\\nTARIF PENGIRIMAN\\n'));
+    expect(once, contains('\\nBerat aktual: 30 kg'));
+    expect(once, contains('Keterangan Reguler:'));
+    expect(twice, equals(once));
+    expect(twice, contains('\\nBerat tagihan: 30 kg'));
+    expect(twice, contains('\\nEstimasi ongkir: Rp 141.000'));
+  });
+
   test('spokenVersion preserves sentence punctuation and words containing kg', () {
     expect(spokenVersion('Tarif khusus Rp 3.400. Tarif Pakgading tersedia.'),
         'Tarif khusus tiga ribu empat ratus rupiah. Tarif Pakgading tersedia.');
