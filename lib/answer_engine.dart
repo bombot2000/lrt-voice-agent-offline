@@ -383,7 +383,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       'Tujuan: $destination',
       '',
       '💰 Tarif Pengiriman:',
-      if (tariffLines.isNotEmpty) tariffLines.join('\\n\\n'),
+      if (tariffLines.isNotEmpty) tariffLines.join('\n\n'),
       'Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
@@ -410,7 +410,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     'TARIF PENGIRIMAN',
     'Tujuan: $destination',
     '',
-    ...tariffLines,
+    if (tariffLines.isNotEmpty) tariffLines.join('\n\n'),
     '',
     if (lead.isNotEmpty) 'Estimasi Pengiriman: $lead',
   ].join('\n');
