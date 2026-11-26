@@ -87,7 +87,7 @@ void main() {
     test('sapaan di depan pertanyaan ongkir tidak mengganggu', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       expect(await engine.answer('selamat pagi ongkir ke Abiansemal'),
-          contains('Reguler (minimum 25 kg): Rp 117.500, per kg selanjutnya Rp 4.700'));
+          contains('Reguler (min. 25 kg) : Rp 117.500,\n  per kg selanjutnya Rp 4.700'));
     });
   });
 
@@ -171,7 +171,7 @@ void main() {
       expect(a, contains('Berat tagihan: 25 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 117.500'));
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, isNot(contains('25.0')));
     });
 
@@ -182,7 +182,7 @@ void main() {
       expect(a, contains('Berat tagihan: 30 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 141.000')); // 30 kg x Rp 4.700
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, isNot(contains('Tarif khusus')));
       expect(a, contains('Handler: BEKASI AGEN'));
       expect(a, isNot(contains('Lead time')));
@@ -211,7 +211,7 @@ void main() {
     test('SP1 tidak berlaku di bawah minimum dan turun ke Reguler', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, contains('Berat aktual: 30 kg'));
       expect(a, contains('Berat tagihan: 30 kg'));
       expect(a, contains('Layanan: Reguler'));
@@ -224,7 +224,7 @@ void main() {
     test('SP3 tidak berlaku di bawah minimum dan turun ke SP1 yang memenuhi', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg SP3');
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, contains('Berat aktual: 250 kg'));
       expect(a, contains('Berat tagihan: 250 kg'));
       expect(a, contains('Layanan: Reguler'));
@@ -234,7 +234,7 @@ void main() {
     test('berat 30 kg tidak memakai SP1 yang minimum 200 kg walau disebut', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, contains('Berat aktual: 30 kg'));
       expect(a, contains('Berat tagihan: 30 kg'));
       expect(a, contains('Layanan: Reguler'));
@@ -262,7 +262,7 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 300 kg Reguler');
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, contains('Berat aktual: 300 kg'));
       expect(a, contains('Layanan: Reguler'));
     });
@@ -303,7 +303,7 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg SP2');
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      
       expect(a, contains('Berat aktual: 250 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 1.125.000'));
@@ -364,11 +364,33 @@ void main() {
       expect(a, isNot(contains('SP3:')));
     });
 
+    test('format tanpa berat mengikuti contoh ringkas dan urutan tarif', () async {
+      const row = <String, Object?>{
+        'province': 'JAWA TIMUR',
+        'city': 'MALANG KOTA',
+        'district': 'KLOJEN',
+        'village': 'GADINGKASRI',
+        'min_reg': '20',
+        'tarif_reg': '1700',
+        'tarif_10kg': '2900',
+        'lead_time': '2',
+      };
+      final answer = await AnswerEngine(
+        FakeLookup(rows: [row], total: 1),
+      ).answer('tarif Gadingkasri Klojen Malang');
+      expect(answer, 'TARIF PENGIRIMAN\\n'
+          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
+          '- Reguler (min. 20 kg) : Rp 34.000,\\n'
+          '  per kg selanjutnya Rp 1.700\\n\\n'
+          '- Tarif 10 kg (max.10 kg) : Rp 29.000\\n\\n'
+          'Estimasi Pengiriman: 2 hari');
+    });
+
     test('tanpa berat menampilkan minimum dan tarif per kg', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       final a = await engine.answer('tarif ke Abiansemal');
-      expect(a, contains('Reguler (minimum 25 kg): Rp 117.500, per kg selanjutnya Rp 4.700'));
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      expect(a, contains('Reguler (min. 25 kg) : Rp 117.500,\n  per kg selanjutnya Rp 4.700'));
+      
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
       expect(a, isNot(contains('SP3:')));
@@ -397,7 +419,7 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
 
       final regular = await engine.answer('Wonosobo Wonosobo');
-      expect(regular, contains('Tarif 10 kg: Rp 39.000'));
+      expect(regular, contains('Tarif 10 kg (max.10 kg) : Rp 39.000'));
       expect(regular, contains('Reguler (minimum 20 kg): Rp 54.000, per kg selanjutnya Rp 2.700'));
       expect(regular, isNot(contains('Tarif khusus')));
       expect(regular, isNot(contains('Rp 1.950')));
@@ -448,8 +470,8 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('tarif ke Bekasi Jati Asih');
-      expect(a, contains('Reguler (minimum 20 kg): Rp 62.000, per kg selanjutnya Rp 3.100'));
-      expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
+      expect(a, contains('Reguler (min. 20 kg) : Rp 62.000,\n  per kg selanjutnya Rp 3.100'));
+      
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
       expect(a, isNot(contains('SP3:')));
