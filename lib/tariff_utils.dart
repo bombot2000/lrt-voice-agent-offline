@@ -288,6 +288,15 @@ int _editDistance(String a, String b) {
 /// Merapikan jawaban tarif untuk tampilan chat versi ketik.
 /// Jawaban suara tetap memakai teks asli agar nyaman dibacakan.
 String formatTypedReply(String text) {
+  final structured = text.trim();
+  if (structured.startsWith('📦 INFORMASI TARIF NEXT CARGO')) {
+    return structured
+        .replaceFirst('📦 INFORMASI TARIF NEXT CARGO', 'HASIL TARIF PENGIRIMAN')
+        .replaceAll('💰 Tarif Pengiriman:', 'TARIF PENGIRIMAN')
+        .replaceAll('⏱️ Estimasi Pengiriman:', 'Estimasi Pengiriman:')
+        .replaceAll('📍 Handler:', 'Handler:')
+        .replaceAll('Perkiraan ongkir:', 'Estimasi ongkir:');
+  }
   final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
   if (normalized.isEmpty) return normalized;
   final sentences = normalized
