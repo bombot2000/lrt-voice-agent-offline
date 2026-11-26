@@ -90,14 +90,14 @@ void main() {
       final answer = buildFareAnswer('Kasin Klojen 46 kg', row);
       expect(
         answer,
-        'ESTIMASI TARIF PENGIRIMAN\\n'
-        'Tujuan: Kasin, Klojen, Malang Kota, Jawa Timur\\n'
-        '\\n'
-        'Berat aktual: 46 kg\\n'
-        'Layanan: Reguler (min. 30 kg)\\n'
-        'Tarif per kg selanjutnya: Rp 1.700\\n'
-        'Estimasi ongkir: Rp 78.200\\n'
-        '\\n'
+        'ESTIMASI TARIF PENGIRIMAN\n'
+        'Tujuan: Kasin, Klojen, Malang Kota, Jawa Timur\n'
+        '\n'
+        'Berat aktual: 46 kg\n'
+        'Layanan: Reguler (min. 30 kg)\n'
+        'Tarif per kg selanjutnya: Rp 1.700\n'
+        'Estimasi ongkir: Rp 78.200\n'
+        '\n'
         'Estimasi Pengiriman: 2 hari',
       );
       final twentyKgRow = <String, Object?>{...row, 'min_reg': '20'};
