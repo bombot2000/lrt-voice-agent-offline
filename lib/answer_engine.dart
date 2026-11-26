@@ -311,12 +311,18 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   final regularMinimum = parseTariffNumber(r['min_reg']);
   if (wantsSpecial && specialRate != null && specialRate > 0 &&
       regularMinimum != null && regularMinimum > 0) {
-    final prefix = weight == null
-        ? 'Tarif NEXT Cargo ke $destination.'
-        : 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg.';
     final billable = weight == null ? regularMinimum : billableWeight(weight, regularMinimum);
     final line = 'Tarif khusus: minimum Reguler ${formatPlainNumber(regularMinimum)} kg, berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(specialRate)}/kg = ${formatRupiah(billable * specialRate)}.';
-    return '$prefix $line';
+    return [
+      '📦 INFORMASI TARIF NEXT CARGO',
+      'Tujuan: $destination',
+      '',
+      '💰 Tarif Pengiriman:',
+      '- $line',
+      '',
+      if (_leadTimeLabel(r).isNotEmpty) '⏱️ Estimasi Pengiriman: ${_leadTimeLabel(r)}',
+      if (_handlerLabel(r).isNotEmpty) '📍 Handler: ${_handlerLabel(r)}',
+    ].join('\\n');
   }
   if (wantsSpecial && (specialRate == null || specialRate <= 0)) {
     return 'Tarif khusus tidak tersedia untuk tujuan $destination.';
@@ -328,9 +334,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   final tarif10 = parseTariffNumber(r['tarif_10kg']);
   if (weight != null && weight <= 13 && tarif10 != null && tarif10 > 0) {
     final billable = weight < 10 ? 10 : weight;
-    final minimumNotice = weight < 10
-        ? 'Berat aktual ${formatPlainNumber(weight)} kg, minimum tagihan 10 kg.'
-        : 'Berat aktual ${formatPlainNumber(weight)} kg.';
     final amount = formatRupiah(billable * tarif10);
     final lead = _leadTimeLabel(r);
     final handler = _handlerLabel(r);
@@ -371,10 +374,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     final unavailable = requested ?? selectedService;
     return 'Tarif $unavailable tidak tersedia untuk tujuan $destination. Data minimum atau tarif layanan belum lengkap.';
   }
-
-  final prefix = weight == null
-      ? 'Tarif NEXT Cargo ke $destination.'
-      : 'Perkiraan ongkir NEXT Cargo ke $destination untuk berat ${formatPlainNumber(weight)} kg (minimum layanan berlaku).';
 
   // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
   // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
