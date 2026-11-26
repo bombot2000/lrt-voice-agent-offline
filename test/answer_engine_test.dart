@@ -378,11 +378,11 @@ void main() {
       final answer = await AnswerEngine(
         FakeLookup(rows: [row], total: 1),
       ).answer('tarif Gadingkasri Klojen Malang');
-      expect(answer, 'TARIF PENGIRIMAN\\n'
-          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
-          '- Reguler (min. 20 kg) : Rp 34.000,\\n'
-          '  per kg selanjutnya Rp 1.700\\n\\n'
-          '- Tarif 10 kg (max.10 kg) : Rp 29.000\\n\\n'
+      expect(answer, 'TARIF PENGIRIMAN\n'
+          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\n\n'
+          '- Reguler (min. 20 kg) : Rp 34.000,\n'
+          '  per kg selanjutnya Rp 1.700\n\n'
+          '- Tarif 10 kg (max.10 kg) : Rp 29.000\n\n'
           'Estimasi Pengiriman: 2 hari');
     });
 
