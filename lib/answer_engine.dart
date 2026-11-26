@@ -322,7 +322,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       if (_leadTimeLabel(r).isNotEmpty) '⏱️ Estimasi Pengiriman: ${_leadTimeLabel(r)}',
       if (_handlerLabel(r).isNotEmpty) '📍 Handler: ${_handlerLabel(r)}',
-    ].join('\\n');
+    ].join('\n');
   }
   if (wantsSpecial && (specialRate == null || specialRate <= 0)) {
     return 'Tarif khusus tidak tersedia untuk tujuan $destination.';
