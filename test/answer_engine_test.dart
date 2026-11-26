@@ -527,7 +527,7 @@ void main() {
       final r = await engine.ask('ongkir ke Abiansemal 20 kilo');
       final answer = engine.select(r.choices.last);
       expect(answer.text, contains('Sibang Kaja'));
-      expect(answer.text, contains('berat aktual 20 kg'));
+      expect(answer.text, contains('Berat aktual: 20 kg'));
       expect(answer.text, contains('Rp 130.000')); // 25 kg x 5.200
       expect(engine.hasPendingChoice, false);
     });
@@ -551,7 +551,7 @@ void main() {
       await engine.ask('ongkir ke Abiansemal 20 kilo');
       final r = await engine.ask('Sibang');
       expect(r.text, contains('Sibang Kaja'));
-      expect(r.text, contains('berat aktual 20 kg'));
+      expect(r.text, contains('Berat aktual: 20 kg'));
       expect(r.choices, isEmpty);
       expect(engine.hasPendingChoice, false);
     });
@@ -571,7 +571,7 @@ void main() {
       expect(first.choices.length, 6);
       final narrowed = await engine.ask('Sibang');
       expect(narrowed.text, contains('Sibang Kaja'));
-      expect(narrowed.text, contains('berat aktual 20 kg'));
+      expect(narrowed.text, contains('Berat aktual: 20 kg'));
     });
 
     test('jawaban yang tidak cocok kandidat dianggap pertanyaan baru',
@@ -590,7 +590,7 @@ void main() {
       expect(afterWeight.text, contains('2 tujuan yang cocok'));
       final resolved = await engine.ask('Sibang');
       expect(resolved.text, contains('Sibang Kaja'));
-      expect(resolved.text, contains('berat aktual 20 kg'));
+      expect(resolved.text, contains('Berat aktual: 20 kg'));
       expect(engine.hasPendingChoice, false);
     });
 
