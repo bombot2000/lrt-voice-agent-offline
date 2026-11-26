@@ -61,6 +61,25 @@ void main() {
     expect(formatTypedReply(formatTypedReply(expected)), expected);
   });
 
+  test('formatTypedReply menghapus bullet nyasar setelah label min.', () {
+    const raw = 'ESTIMASI TARIF PENGIRIMAN\\n'
+        'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
+        'Berat aktual: 56 kg\\n'
+        'Layanan: Reguler (min. • 20 kg)\\n'
+        'Tarif per kg selanjutnya: Rp 1.700\\n'
+        'Estimasi ongkir: Rp 95.200\\n\\n'
+        'Estimasi Pengiriman: 2 hari';
+    const expected = 'ESTIMASI TARIF PENGIRIMAN\\n'
+        'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
+        'Berat aktual: 56 kg\\n'
+        'Layanan: Reguler (min. 20 kg)\\n'
+        'Tarif per kg selanjutnya: Rp 1.700\\n'
+        'Estimasi ongkir: Rp 95.200\\n\\n'
+        'Estimasi Pengiriman: 2 hari';
+    expect(formatTypedReply(raw), expected);
+    expect(formatTypedReply(formatTypedReply(raw)), expected);
+  });
+
   test('formatTypedReply tetap mempertahankan baris saat dipanggil dua kali', () {
     const raw = '📦 INFORMASI TARIF NEXT CARGO\\nTujuan: Pakisaji, Kabupaten Malang, Jawa Timur\\n\\n💰 Tarif Pengiriman:\\nBerat aktual: 30 kg\\nBerat tagihan: 30 kg\\nLayanan: Reguler\\nTarif per kg: Rp 4.700\\nEstimasi ongkir: Rp 141.000\\nKeterangan Reguler: Ketentuan SP1, SP2, dan SP3 sudah termasuk dalam perhitungan Reguler.';
     final once = formatTypedReply(raw);
