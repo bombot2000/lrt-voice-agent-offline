@@ -50,6 +50,17 @@ void main() {
     );
   });
 
+  test('formatTypedReply mempertahankan format tarif ringkas apa adanya', () {
+    const expected = 'TARIF PENGIRIMAN\\n'
+        'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
+        '- Reguler (min. 20 kg) : Rp 34.000,\\n'
+        '  per kg selanjutnya Rp 1.700\\n\\n'
+        '- Tarif 10 kg (max.10 kg) : Rp 29.000\\n\\n'
+        'Estimasi Pengiriman: 2 hari';
+    expect(formatTypedReply(expected), expected);
+    expect(formatTypedReply(formatTypedReply(expected)), expected);
+  });
+
   test('formatTypedReply tetap mempertahankan baris saat dipanggil dua kali', () {
     const raw = '📦 INFORMASI TARIF NEXT CARGO\\nTujuan: Pakisaji, Kabupaten Malang, Jawa Timur\\n\\n💰 Tarif Pengiriman:\\nBerat aktual: 30 kg\\nBerat tagihan: 30 kg\\nLayanan: Reguler\\nTarif per kg: Rp 4.700\\nEstimasi ongkir: Rp 141.000\\nKeterangan Reguler: Ketentuan SP1, SP2, dan SP3 sudah termasuk dalam perhitungan Reguler.';
     final once = formatTypedReply(raw);
