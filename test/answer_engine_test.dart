@@ -178,9 +178,10 @@ void main() {
     test('berat tanpa layanan memakai Reguler dan tidak mencampur kolom lain', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg');
-      expect(a, contains('Reguler: berat aktual 30 kg, berat tagihan 30 kg'));
+      expect(a, contains('Berat aktual: 30 kg'));
+      expect(a, contains('Berat tagihan: 30 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 141.000')); // 30 kg x Rp 4.700
-      expect(a, isNot(contains('SP1')));
       expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
       expect(a, isNot(contains('Tarif khusus')));
       expect(a, contains('Handler: BEKASI AGEN'));
@@ -211,7 +212,9 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
       expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
-      expect(a, contains('Reguler: berat aktual 30 kg, berat tagihan 30 kg'));
+      expect(a, contains('Berat aktual: 30 kg'));
+      expect(a, contains('Berat tagihan: 30 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 141.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
@@ -222,25 +225,29 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg SP3');
       expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
-      expect(a, contains('Reguler: berat aktual 250 kg, berat tagihan 250 kg'));
+      expect(a, contains('Berat aktual: 250 kg'));
+      expect(a, contains('Berat tagihan: 250 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 1.125.000'));
-      expect(a, isNot(contains('Reguler: berat aktual')));
     });
 
     test('berat 30 kg tidak memakai SP1 yang minimum 200 kg walau disebut', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
       expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
-      expect(a, contains('Reguler: berat aktual 30 kg, berat tagihan 30 kg'));
+      expect(a, contains('Berat aktual: 30 kg'));
+      expect(a, contains('Berat tagihan: 30 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 141.000'));
-      expect(a, isNot(contains('Reguler: berat aktual')));
       expect(a, isNot(contains('Rp 900.000')));
     });
 
     test('berat 250 kg otomatis masuk SP1 jika minimum SP1 200 kg', () async {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg');
-      expect(a, contains('Reguler: berat aktual 250 kg, berat tagihan 250 kg'));
+      expect(a, contains('Berat aktual: 250 kg'));
+      expect(a, contains('Berat tagihan: 250 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 1.125.000'));
       expect(a, isNot(contains('Reguler:')));
       expect(a, isNot(contains('SP3:')));
@@ -279,7 +286,9 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 600 kg');
-      expect(a, contains('Reguler: berat aktual 600 kg, berat tagihan 600 kg'));
+      expect(a, contains('Berat aktual: 600 kg'));
+      expect(a, contains('Berat tagihan: 600 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 2.580.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP3:')));
@@ -297,7 +306,6 @@ void main() {
       expect(a, contains('Berat aktual: 250 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 1.125.000'));
-      expect(a, isNot(contains('Reguler: berat aktual')));
     });
 
     test('SP3 dipilih saat berat memenuhi minimum SP3', () async {
@@ -308,7 +316,9 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 1200 kg');
-      expect(a, contains('Reguler: berat aktual 1200 kg, berat tagihan 1200 kg'));
+      expect(a, contains('Berat aktual: 1200 kg'));
+      expect(a, contains('Berat tagihan: 1200 kg'));
+      expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 4.800.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
@@ -350,7 +360,6 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       final a = await engine.answer('tarif ke Abiansemal');
       expect(a, contains('Reguler (minimum 25 kg): Rp 117.500, per kg selanjutnya Rp 4.700'));
-      expect(a, isNot(contains('SP1')));
       expect(a, contains('Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.'));
       expect(a, isNot(contains('SP3')));
       expect(a, isNot(contains('Tarif khusus')));
@@ -389,22 +398,22 @@ void main() {
       expect(fiveKg, isNot(contains('Reguler')));
 
       final oneKg = await engine.answer('Wonosobo Wonosobo 1 kg');
-      expect(oneKg, contains('Perkiraan ongkir: Rp 39.000'));
+      expect(oneKg, contains('Estimasi ongkir: Rp 39.000'));
 
       final tenKg = await engine.answer('Wonosobo Wonosobo 10 kg');
-      expect(tenKg, contains('Perkiraan ongkir: Rp 39.000'));
+      expect(tenKg, contains('Estimasi ongkir: Rp 39.000'));
       expect(tenKg, isNot(contains('Reguler')));
 
       final elevenKg = await engine.answer('Wonosobo Wonosobo 11 kg');
-      expect(elevenKg, contains('Perkiraan ongkir: Rp 42.900'));
+      expect(elevenKg, contains('Estimasi ongkir: Rp 42.900'));
       expect(elevenKg, isNot(contains('Reguler')));
 
       final twelveKg = await engine.answer('Wonosobo Wonosobo 12 kg');
-      expect(twelveKg, contains('Perkiraan ongkir: Rp 46.800'));
+      expect(twelveKg, contains('Estimasi ongkir: Rp 46.800'));
       expect(twelveKg, isNot(contains('Reguler')));
 
       final thirteenKg = await engine.answer('Wonosobo Wonosobo 13 kg');
-      expect(thirteenKg, contains('Perkiraan ongkir: Rp 50.700'));
+      expect(thirteenKg, contains('Estimasi ongkir: Rp 50.700'));
       expect(thirteenKg, isNot(contains('Reguler')));
 
       final fourteenKg = await engine.answer('Wonosobo Wonosobo 14 kg');
