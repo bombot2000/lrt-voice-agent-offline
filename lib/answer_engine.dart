@@ -347,7 +347,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
-    ].join('\\n');
+    ].join('\n');
   }
 
   final lines = <String>[];
@@ -392,7 +392,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
-    ].join('\\n');
+    ].join('\n');
   }
 
   final lead = _leadTimeLabel(r);
@@ -420,5 +420,5 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     '',
     if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
     if (handler.isNotEmpty) '📍 Handler: $handler',
-  ].join('\\n');
+  ].join('\n');
 }
