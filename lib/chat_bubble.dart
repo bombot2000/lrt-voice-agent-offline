@@ -45,6 +45,7 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final displayText = isUser ? message.text : formatTypedReply(message.text);
     final shareText = formatTypedReply(message.text);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -88,7 +89,7 @@ class ChatBubble extends StatelessWidget {
                     ],
                   ),
                   child: Text.rich(
-                    formatCargoMessage(message.text, isUser: isUser),
+                    formatCargoMessage(displayText, isUser: isUser),
                     textAlign: TextAlign.start,
                   ),
                 ),
