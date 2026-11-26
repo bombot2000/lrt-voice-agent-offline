@@ -149,7 +149,7 @@ void main() {
       });
       expect(five, contains('Estimasi Pengiriman: 5 hari'));
       expect(five, isNot(contains('5.0 hari')));
-      expect(four, contains('Lead time 4 hari.'));
+      expect(four, contains('Estimasi Pengiriman: 4 hari'));
       expect(four, isNot(contains('4.0 hari')));
     });
 
@@ -385,19 +385,19 @@ void main() {
       expect(oneKg, contains('Perkiraan ongkir: Rp 39.000'));
 
       final tenKg = await engine.answer('Wonosobo Wonosobo 10 kg');
-      expect(tenKg, contains('10 kg × Rp 3.900/kg = Rp 39.000'));
+      expect(tenKg, contains('Perkiraan ongkir: Rp 39.000'));
       expect(tenKg, isNot(contains('Reguler')));
 
       final elevenKg = await engine.answer('Wonosobo Wonosobo 11 kg');
-      expect(elevenKg, contains('11 kg × Rp 3.900/kg = Rp 42.900'));
+      expect(elevenKg, contains('Perkiraan ongkir: Rp 42.900'));
       expect(elevenKg, isNot(contains('Reguler')));
 
       final twelveKg = await engine.answer('Wonosobo Wonosobo 12 kg');
-      expect(twelveKg, contains('12 kg × Rp 3.900/kg = Rp 46.800'));
+      expect(twelveKg, contains('Perkiraan ongkir: Rp 46.800'));
       expect(twelveKg, isNot(contains('Reguler')));
 
       final thirteenKg = await engine.answer('Wonosobo Wonosobo 13 kg');
-      expect(thirteenKg, contains('13 kg × Rp 3.900/kg = Rp 50.700'));
+      expect(thirteenKg, contains('Perkiraan ongkir: Rp 50.700'));
       expect(thirteenKg, isNot(contains('Reguler')));
 
       final fourteenKg = await engine.answer('Wonosobo Wonosobo 14 kg');
