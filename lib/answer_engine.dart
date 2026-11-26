@@ -347,7 +347,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
-    ].where((line) => line != null).join('\\n');
+    ].join('\\n');
   }
 
   final lines = <String>[];
