@@ -343,8 +343,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       '💰 Tarif Pengiriman:',
       'Tarif 10 kg: ${formatRupiah(tarif10 * 10)}',
-      'Berat aktual: ${formatPlainNumber(weight)} kg',
-      'Berat tagihan: ${formatPlainNumber(billable)} kg',
+      'Berat aktual: ${formatPlainNumber(weight)} kg (berat aktual ${formatPlainNumber(weight)} kg, berat tagihan ${formatPlainNumber(billable)} kg)',
       'Perkiraan ongkir: $amount',
       if (weight < 10) 'Catatan: minimum tagihan 10 kg',
       '',
@@ -386,16 +385,15 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       final minimum = parseTariffNumber(r[minKey]);
       final rate = parseTariffNumber(r[rateKey]);
       if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
-      tariffLines.add(
-        '$label ${formatPlainNumber(minimum)} kg: ${formatRupiah(minimum * rate)}, '
-        'per kilo selanjutnya ${formatRupiah(rate)}',
-      );
       final billable = billableWeight(weight, minimum);
-      if (billable > minimum) {
-        tariffLines.add(
-          'Perkiraan ongkir ${formatPlainNumber(weight)} kg: ${formatRupiah(billable * rate)}',
-        );
-      } else if (weight < minimum) {
+      tariffLines.add(
+        '$label: berat aktual ${formatPlainNumber(weight)} kg, '
+        'berat tagihan ${formatPlainNumber(billable)} kg',
+      );
+      tariffLines.add(
+        'Perkiraan ongkir: ${formatRupiah(billable * rate)}',
+      );
+      if (weight < minimum) {
         tariffLines.add(
           'Catatan: minimum tagihan ${formatPlainNumber(minimum)} kg',
         );
