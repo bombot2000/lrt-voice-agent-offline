@@ -18,18 +18,20 @@ TextSpan formatCargoMessage(String message, {required bool isUser}) {
   final spans = <InlineSpan>[];
   var cursor = 0;
   for (final match in matches) {
-    if (match.start > cursor) {
-      spans.add(TextSpan(text: message.substring(cursor, match.start)));
+    final amount = match.group(1)!;
+    final amountStart = match.start + match.group(0)!.lastIndexOf(amount);
+    if (amountStart > cursor) {
+      spans.add(TextSpan(text: message.substring(cursor, amountStart)));
     }
     spans.add(TextSpan(
-      text: match.group(1),
+      text: amount,
       style: const TextStyle(
         color: Color(0xFFB71C1C),
         fontWeight: FontWeight.w800,
         fontSize: 15.5,
       ),
     ));
-    cursor = match.end;
+    cursor = amountStart + amount.length;
   }
   if (cursor < message.length) spans.add(TextSpan(text: message.substring(cursor)));
   return TextSpan(
