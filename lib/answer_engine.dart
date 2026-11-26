@@ -343,7 +343,9 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       '',
       '💰 Tarif Pengiriman:',
       'Tarif 10 kg: ${formatRupiah(tarif10 * 10)}',
-      if (weight > 10) 'Perkiraan ongkir ${formatPlainNumber(weight)} kg: $amount',
+      'Berat aktual: ${formatPlainNumber(weight)} kg',
+      'Berat tagihan: ${formatPlainNumber(billable)} kg',
+      'Perkiraan ongkir: $amount',
       if (weight < 10) 'Catatan: minimum tagihan 10 kg',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
@@ -398,9 +400,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
           'Catatan: minimum tagihan ${formatPlainNumber(minimum)} kg',
         );
       }
-    }
-    if (tarif10 != null && tarif10 > 0) {
-      tariffLines.add('Tarif 10 kg: ${formatRupiah(tarif10 * 10)}');
     }
     return [
       '📦 INFORMASI TARIF NEXT CARGO',
