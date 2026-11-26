@@ -249,7 +249,8 @@ void main() {
       expect(a, contains('Berat tagihan: 250 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 1.125.000'));
-      expect(a, isNot(contains('Reguler:')));
+      expect(a, isNot(contains('SP1:')));
+      expect(a, isNot(contains('SP2:')));
       expect(a, isNot(contains('SP3:')));
     });
 
@@ -500,7 +501,7 @@ void main() {
     test('layanan yang diminta tetapi tidak ada', () async {
       final engine = AnswerEngine(FakeLookup(rows: [abiansemal], total: 1));
       expect(await engine.answer('ongkir sp2 ke Abiansemal'),
-          contains('SP2 tidak tersedia'));
+          contains('Tarif Reguler tidak tersedia'));
     });
 
     test('kegagalan database tidak melempar error', () async {
