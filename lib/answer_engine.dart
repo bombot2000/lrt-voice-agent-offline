@@ -198,6 +198,19 @@ class AnswerEngine {
 String _destinationOf(Map<String, Object?> r) =>
     formatDestination(village: r['village'], district: r['district'], city: r['city'], province: r['province']);
 
+String _leadTimeLabel(Map<String, Object?> row) {
+  final raw = (row['lead_time'] ?? '').toString().trim();
+  if (raw.isEmpty || raw == '-') return '';
+  final parsed = parseTariffNumber(raw);
+  final days = parsed == null ? raw : parsed.ceil().toString();
+  return '$days hari';
+}
+
+String _handlerLabel(Map<String, Object?> row) {
+  final value = (row['handler'] ?? '').toString().trim();
+  return value.isEmpty || value == '-' ? '' : value;
+}
+
 /// Menyusun jawaban tarif untuk satu baris tujuan.
 String buildFareAnswer(String query, Map<String, Object?> r) {
   final destination = _destinationOf(r);
@@ -318,7 +331,23 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     final minimumNotice = weight < 10
         ? 'Berat aktual ${formatPlainNumber(weight)} kg, minimum tagihan 10 kg.'
         : 'Berat aktual ${formatPlainNumber(weight)} kg.';
-    return 'Perkiraan ongkir NEXT Cargo ke $destination: $minimumNotice Berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(tarif10)}/kg = ${formatRupiah(billable * tarif10)} (Tarif 10 kg, berlaku sampai 13 kg).';
+    final amount = formatRupiah(billable * tarif10);
+    final lead = _leadTimeLabel(r);
+    final handler = _handlerLabel(r);
+    return [
+      '📦 INFORMASI TARIF NEXT CARGO',
+      'Tujuan: $destination',
+      '',
+      '💰 Tarif Pengiriman:',
+      '- Tarif 10 kg: ${formatRupiah(tarif10 * 10)}',
+      '- Berat aktual: ${formatPlainNumber(weight)} kg',
+      '- Berat tagihan: ${formatPlainNumber(billable)} kg',
+      '- Perkiraan ongkir: $amount',
+      if (weight < 10) '- Catatan: minimum tagihan 10 kg',
+      '',
+      if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
+      if (handler.isNotEmpty) '📍 Handler: $handler',
+    ].where((line) => line != null).join('\\n');
   }
 
   final lines = <String>[];
@@ -350,20 +379,46 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
   // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
   // tarif/kg sehingga tidak dicampurkan ke total.
-  if (weight != null) return [prefix, if (minimumNotice != null) minimumNotice, ...lines].join(' ');
-
-  final extras = <String>[];
-  if (tarif10 != null && tarif10 > 0) {
-    extras.add('Tarif 10 kg ${formatRupiah(tarif10)}.');
+  if (weight != null) {
+    final lead = _leadTimeLabel(r);
+    final handler = _handlerLabel(r);
+    return [
+      '📦 INFORMASI TARIF NEXT CARGO',
+      'Tujuan: $destination',
+      '',
+      '💰 Tarif Pengiriman:',
+      ...lines.map((line) => '- $line'),
+      if (minimumNotice != null) '- Catatan: $minimumNotice',
+      '',
+      if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
+      if (handler.isNotEmpty) '📍 Handler: $handler',
+    ].join('\\n');
   }
-  final rawLead = (r['lead_time'] ?? '').toString().trim();
-  final parsedLead = parseTariffNumber(rawLead);
-  // Lead time selalu ditampilkan dalam hari bulat; pecahan dibulatkan ke atas
-  // agar estimasi tidak menjanjikan waktu lebih singkat dari data sumber.
-  final lead = parsedLead == null ? rawLead : parsedLead.ceil().toString();
-  if (lead.isNotEmpty && lead != '-') extras.add('Lead time $lead hari.');
-  final handler = (r['handler'] ?? '').toString().trim();
-  if (handler.isNotEmpty && handler != '-') extras.add('Handler $handler.');
 
-  return [prefix, ...lines, ...extras].join(' ');
+  final lead = _leadTimeLabel(r);
+  final handler = _handlerLabel(r);
+  final tariffLines = <String>[];
+  for (final (label, minKey, rateKey) in services) {
+    if (selectedService != label) continue;
+    final minimum = parseTariffNumber(r[minKey]);
+    final rate = parseTariffNumber(r[rateKey]);
+    if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
+    tariffLines.add(
+      '- $label ${formatPlainNumber(minimum)} kg: ${formatRupiah(minimum * rate)}, '
+      'per kg selanjutnya ${formatRupiah(rate)}',
+    );
+  }
+  if (tarif10 != null && tarif10 > 0) {
+    tariffLines.add('- Tarif 10 kg: ${formatRupiah(tarif10 * 10)}');
+  }
+  return [
+    '📦 INFORMASI TARIF NEXT CARGO',
+    'Tujuan: $destination',
+    '',
+    '💰 Tarif Pengiriman:',
+    ...tariffLines,
+    '',
+    if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
+    if (handler.isNotEmpty) '📍 Handler: $handler',
+  ].join('\\n');
 }
