@@ -342,8 +342,8 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       'Tujuan: $destination',
       '',
       '💰 Tarif Pengiriman:',
-      'Tarif 10 kg: \${formatRupiah(tarif10 * 10)}',
-      if (weight > 10) 'Perkiraan ongkir \${formatPlainNumber(weight)} kg: $amount',
+      'Tarif 10 kg: ${formatRupiah(tarif10 * 10)}',
+      if (weight > 10) 'Perkiraan ongkir ${formatPlainNumber(weight)} kg: $amount',
       if (weight < 10) 'Catatan: minimum tagihan 10 kg',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
@@ -385,22 +385,22 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       final rate = parseTariffNumber(r[rateKey]);
       if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
       tariffLines.add(
-        '$label \${formatPlainNumber(minimum)} kg: \${formatRupiah(minimum * rate)}, '
-        'per kilo selanjutnya \${formatRupiah(rate)}',
+        '$label ${formatPlainNumber(minimum)} kg: ${formatRupiah(minimum * rate)}, '
+        'per kilo selanjutnya ${formatRupiah(rate)}',
       );
       final billable = billableWeight(weight, minimum);
       if (billable > minimum) {
         tariffLines.add(
-          'Perkiraan ongkir \${formatPlainNumber(weight)} kg: \${formatRupiah(billable * rate)}',
+          'Perkiraan ongkir ${formatPlainNumber(weight)} kg: ${formatRupiah(billable * rate)}',
         );
       } else if (weight < minimum) {
         tariffLines.add(
-          'Catatan: minimum tagihan \${formatPlainNumber(minimum)} kg',
+          'Catatan: minimum tagihan ${formatPlainNumber(minimum)} kg',
         );
       }
     }
     if (tarif10 != null && tarif10 > 0) {
-      tariffLines.add('Tarif 10 kg: \${formatRupiah(tarif10 * 10)}');
+      tariffLines.add('Tarif 10 kg: ${formatRupiah(tarif10 * 10)}');
     }
     return [
       '📦 INFORMASI TARIF NEXT CARGO',
