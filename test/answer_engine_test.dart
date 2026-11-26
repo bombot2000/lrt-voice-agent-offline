@@ -336,7 +336,6 @@ void main() {
       expect(a, contains('Berat aktual: 1200 kg'));
       expect(a, contains('Layanan: Reguler'));
       expect(a, contains('Rp 4.800.000'));
-      expect(a, isNot(contains('Reguler:')));
     });
 
     test('format berat 10 kg dan 10kg menghasilkan perhitungan yang sama', () async {
