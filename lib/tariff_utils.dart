@@ -295,6 +295,7 @@ String formatTypedReply(String text) {
   // Fungsi ini dipanggil di _showReply dan sekali lagi oleh ChatBubble.
   // Jangan format ulang hasil yang sudah rapi: jalur lama meruntuhkan newline
   // menjadi spasi sehingga format terstruktur hilang di tampilan akhir.
+  if (structured.startsWith('ESTIMASI TARIF PENGIRIMAN') ||
   if (structured.startsWith('TARIF PENGIRIMAN') ||
       structured.startsWith('HASIL TARIF PENGIRIMAN') ||
       structured.startsWith('PERKIRAAN ONGKIR NEXT CARGO') ||
