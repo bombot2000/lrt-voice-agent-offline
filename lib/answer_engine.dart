@@ -342,11 +342,9 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       'Tujuan: $destination',
       '',
       '💰 Tarif Pengiriman:',
-      '- Tarif 10 kg: ${formatRupiah(tarif10 * 10)}',
-      '- Berat aktual: ${formatPlainNumber(weight)} kg',
-      '- Berat tagihan: ${formatPlainNumber(billable)} kg',
-      '- Perkiraan ongkir: $amount',
-      if (weight < 10) '- Catatan: minimum tagihan 10 kg',
+      'Tarif 10 kg: \${formatRupiah(tarif10 * 10)}',
+      if (weight > 10) 'Perkiraan ongkir \${formatPlainNumber(weight)} kg: $amount',
+      if (weight < 10) 'Catatan: minimum tagihan 10 kg',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
@@ -375,19 +373,42 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     return 'Tarif $unavailable tidak tersedia untuk tujuan $destination. Data minimum atau tarif layanan belum lengkap.';
   }
 
-  // Untuk permintaan dengan berat, tampilkan hasil ongkir yang diminta saja.
-  // Tarif khusus, tarif 10 kg, handler, dan lead time bukan komponen perkalian
-  // tarif/kg sehingga tidak dicampurkan ke total.
+  // Format ringkas untuk jawaban yang menyertakan berat.
+  // Rumus dan berat tagihan tetap memakai hasil perhitungan di atas.
   if (weight != null) {
     final lead = _leadTimeLabel(r);
     final handler = _handlerLabel(r);
+    final tariffLines = <String>[];
+    for (final (label, minKey, rateKey) in services) {
+      if (selectedService != label) continue;
+      final minimum = parseTariffNumber(r[minKey]);
+      final rate = parseTariffNumber(r[rateKey]);
+      if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
+      tariffLines.add(
+        '$label \${formatPlainNumber(minimum)} kg: \${formatRupiah(minimum * rate)}, '
+        'per kilo selanjutnya \${formatRupiah(rate)}',
+      );
+      final billable = billableWeight(weight, minimum);
+      if (billable > minimum) {
+        tariffLines.add(
+          'Perkiraan ongkir \${formatPlainNumber(weight)} kg: \${formatRupiah(billable * rate)}',
+        );
+      } else if (weight < minimum) {
+        tariffLines.add(
+          'Catatan: minimum tagihan \${formatPlainNumber(minimum)} kg',
+        );
+      }
+    }
+    if (tarif10 != null && tarif10 > 0) {
+      tariffLines.add('Tarif 10 kg: \${formatRupiah(tarif10 * 10)}');
+    }
     return [
       '📦 INFORMASI TARIF NEXT CARGO',
       'Tujuan: $destination',
       '',
       '💰 Tarif Pengiriman:',
-      ...lines.map((line) => '- $line'),
-      if (minimumNotice != null) '- Catatan: $minimumNotice',
+      ...tariffLines,
+      if (minimumNotice != null) 'Catatan: $minimumNotice',
       '',
       if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
       if (handler.isNotEmpty) '📍 Handler: $handler',
