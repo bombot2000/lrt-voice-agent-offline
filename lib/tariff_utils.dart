@@ -289,6 +289,14 @@ int _editDistance(String a, String b) {
 /// Jawaban suara tetap memakai teks asli agar nyaman dibacakan.
 String formatTypedReply(String text) {
   final structured = text.trim();
+  // Fungsi ini dipanggil di _showReply dan sekali lagi oleh ChatBubble.
+  // Jangan format ulang hasil yang sudah rapi: jalur lama meruntuhkan newline
+  // menjadi spasi sehingga format terstruktur hilang di tampilan akhir.
+  if (structured.startsWith('HASIL TARIF PENGIRIMAN') ||
+      structured.startsWith('PERKIRAAN ONGKIR NEXT CARGO') ||
+      structured.startsWith('INFORMASI TARIF NEXT CARGO')) {
+    return structured;
+  }
   if (structured.startsWith('📦 INFORMASI TARIF NEXT CARGO')) {
     return structured
         .replaceFirst('📦 INFORMASI TARIF NEXT CARGO', 'HASIL TARIF PENGIRIMAN')
