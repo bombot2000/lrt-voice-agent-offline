@@ -420,7 +420,7 @@ void main() {
 
       final regular = await engine.answer('Wonosobo Wonosobo');
       expect(regular, contains('Tarif 10 kg (max.10 kg) : Rp 39.000'));
-      expect(regular, contains('Reguler (minimum 20 kg): Rp 54.000, per kg selanjutnya Rp 2.700'));
+      expect(regular, contains('Reguler (min. 20 kg) : Rp 54.000,\n  per kg selanjutnya Rp 2.700'));
       expect(regular, isNot(contains('Tarif khusus')));
       expect(regular, isNot(contains('Rp 1.950')));
 
