@@ -289,7 +289,7 @@ int _editDistance(String a, String b) {
 /// Jawaban suara tetap memakai teks asli agar nyaman dibacakan.
 String formatTypedReply(String text) {
   final structured = text.trim().replaceAll(
-    RegExp(r'(?<=min\\.)\\s*[•·]\\s*'),
+    RegExp(r'(?<=min\.)\s*[•·]\s*'),
     ' ',
   );
   // Fungsi ini dipanggil di _showReply dan sekali lagi oleh ChatBubble.
