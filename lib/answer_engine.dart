@@ -359,36 +359,33 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   // Rumus dan berat tagihan tetap memakai hasil perhitungan di atas.
   if (weight != null) {
     final lead = _leadTimeLabel(r);
-    final handler = _handlerLabel(r);
     final tariffLines = <String>[];
     for (final (label, minKey, rateKey) in services) {
       if (selectedService != label) continue;
       final minimum = parseTariffNumber(r[minKey]);
       final rate = parseTariffNumber(r[rateKey]);
       if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
+
       final billable = billableWeight(weight, minimum);
+      final regularMinimum = parseTariffNumber(r['min_reg']) ?? minimum;
       tariffLines.add('Berat aktual: ${formatPlainNumber(weight)} kg');
-      tariffLines.add('Berat tagihan: ${formatPlainNumber(billable)} kg');
-      tariffLines.add('Layanan: Reguler');
-      tariffLines.add('Tarif per kg: ${formatRupiah(rate)}');
-      tariffLines.add('Estimasi ongkir: ${formatRupiah(billable * rate)}');
       if (weight < minimum) {
-        tariffLines.add(
-          'Catatan: minimum tagihan ${formatPlainNumber(minimum)} kg',
-        );
+        tariffLines.add('Berat tagihan: ${formatPlainNumber(billable)} kg');
       }
+      tariffLines.add(
+        'Layanan: Reguler (min. ${formatPlainNumber(regularMinimum)} kg)',
+      );
+      tariffLines.add('Tarif per kg selanjutnya: ${formatRupiah(rate)}');
+      tariffLines.add('Estimasi ongkir: ${formatRupiah(billable * rate)}');
     }
     return [
-      '📦 INFORMASI TARIF NEXT CARGO',
+      'ESTIMASI TARIF PENGIRIMAN',
       'Tujuan: $destination',
       '',
-      '💰 Tarif Pengiriman:',
-      if (tariffLines.isNotEmpty) tariffLines.join('\n\n'),
-      'Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.',
+      if (tariffLines.isNotEmpty) tariffLines.join('\\n'),
       '',
-      if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
-      if (handler.isNotEmpty) '📍 Handler: $handler',
-    ].join('\n');
+      if (lead.isNotEmpty) 'Estimasi Pengiriman: $lead',
+    ].join('\\n');
   }
 
   final lead = _leadTimeLabel(r);
