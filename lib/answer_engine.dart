@@ -392,7 +392,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   }
 
   final lead = _leadTimeLabel(r);
-  final handler = _handlerLabel(r);
   final tariffLines = <String>[];
   for (final (label, minKey, rateKey) in services) {
     if (selectedService != label) continue;
@@ -400,22 +399,19 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     final rate = parseTariffNumber(r[rateKey]);
     if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
     tariffLines.add(
-      '- Reguler (minimum ${formatPlainNumber(minimum)} kg): ${formatRupiah(minimum * rate)}, '
-      'per kg selanjutnya ${formatRupiah(rate)}',
+      '- Reguler (min. ${formatPlainNumber(minimum)} kg) : ${formatRupiah(minimum * rate)},\n'
+      '  per kg selanjutnya ${formatRupiah(rate)}',
     );
   }
   if (tarif10 != null && tarif10 > 0) {
-    tariffLines.add('- Tarif 10 kg: ${formatRupiah(tarif10 * 10)}');
+    tariffLines.add('- Tarif 10 kg (max.10 kg) : ${formatRupiah(tarif10 * 10)}');
   }
   return [
-    '📦 INFORMASI TARIF NEXT CARGO',
+    'TARIF PENGIRIMAN',
     'Tujuan: $destination',
     '',
-    '💰 Tarif Pengiriman:',
     ...tariffLines,
-    'Keterangan Reguler: Perhitungan sudah mencakup ketentuan SP1, SP2, dan SP3 sesuai minimum berat yang terpenuhi.',
     '',
-    if (lead.isNotEmpty) '⏱️ Estimasi Pengiriman: $lead',
-    if (handler.isNotEmpty) '📍 Handler: $handler',
+    if (lead.isNotEmpty) 'Estimasi Pengiriman: $lead',
   ].join('\n');
 }
