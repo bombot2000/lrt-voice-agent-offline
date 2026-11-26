@@ -382,10 +382,10 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       'ESTIMASI TARIF PENGIRIMAN',
       'Tujuan: $destination',
       '',
-      if (tariffLines.isNotEmpty) tariffLines.join('\\n'),
+      if (tariffLines.isNotEmpty) tariffLines.join('\n'),
       '',
       if (lead.isNotEmpty) 'Estimasi Pengiriman: $lead',
-    ].join('\\n');
+    ].join('\n');
   }
 
   final lead = _leadTimeLabel(r);
