@@ -71,6 +71,7 @@ class ChatBubble extends StatelessWidget {
                 child: Container(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.80,
+                    minHeight: 48,
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
                   decoration: BoxDecoration(
@@ -99,7 +100,7 @@ class ChatBubble extends StatelessWidget {
               if (isUser) const SizedBox(width: 23),
             ],
           ),
-          if (!isUser)
+          if (!isUser && message.showActions)
             Padding(
               padding: const EdgeInsets.only(left: 38, top: 2),
               child: Row(
@@ -115,7 +116,10 @@ class ChatBubble extends StatelessWidget {
                     },
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     label: const Text('Salin'),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(72, 48),
+                      visualDensity: VisualDensity.standard,
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: () => Share.share(
@@ -124,7 +128,10 @@ class ChatBubble extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.share_rounded, size: 16),
                     label: const Text('Bagikan'),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(72, 48),
+                      visualDensity: VisualDensity.standard,
+                    ),
                   ),
                 ],
               ),
