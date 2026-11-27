@@ -48,6 +48,7 @@ class OfflineAsrService {
   bool _recording = false;
   bool _busy = false;
   HttpClient? _downloadClient;
+  bool _bindingsInitialized = false;
 
   bool get isRecording => _recording;
   bool get isReady => _recognizer != null;
@@ -191,6 +192,12 @@ class OfflineAsrService {
       debug: false,
       provider: 'cpu',
     );
+    // sherpa-onnx 2.x requires native FFI bindings before creating
+    // recognizers. Initialize once in this isolate before any runtime object.
+    if (!_bindingsInitialized) {
+      await initBindingsAsync();
+      _bindingsInitialized = true;
+    }
     _recognizer = await OfflineRecognizer.createAsync(
       OfflineRecognizerConfig(model: model),
     );
