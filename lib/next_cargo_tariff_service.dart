@@ -396,6 +396,35 @@ class NextCargoTariffService {
     return count;
   }
 
+  /// Mengekspor seluruh tarif aktif ke JSON yang dapat diimpor kembali.
+  /// Nama kolom memakai header sumber agar kompatibel dengan parser impor.
+  static Future<Uint8List> exportJson() async {
+    final db = await open();
+    final rows = await db.query(
+      'tariffs',
+      columns: cols,
+      orderBy: 'province ASC, city ASC, district ASC, village ASC',
+    );
+    if (rows.isEmpty) {
+      throw StateError('Belum ada data tarif untuk diekspor.');
+    }
+    final data = rows.map((row) {
+      return <String, String>{
+        for (var i = 0; i < cols.length; i++)
+          headers[i]: (row[cols[i]] ?? '').toString(),
+      };
+    }).toList();
+    final document = <String, Object?>{
+      'format': 'next_cargo_tariff_backup',
+      'version': 1,
+      'exported_at': DateTime.now().toUtc().toIso8601String(),
+      'data': data,
+    };
+    return Uint8List.fromList(
+      utf8.encode(const JsonEncoder.withIndent('  ').convert(document)),
+    );
+  }
+
   /// Berat yang ditagihkan mengikuti minimum layanan pada baris tujuan.
   static num billableWeight(num actualWeight, num serviceMinimum) =>
       util.billableWeight(actualWeight, serviceMinimum);
