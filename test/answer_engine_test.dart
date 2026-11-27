@@ -417,6 +417,30 @@ void main() {
     });
 
 
+    test('tarif khusus memakai format ringkas dan tetap memuat Handler', () async {
+      const row = <String, Object?>{
+        'province': 'JAWA TIMUR',
+        'city': 'MALANG KOTA',
+        'district': 'KLOJEN',
+        'village': 'GADINGKASRI',
+        'min_reg': '20',
+        'tarif_reg': '1700',
+        'tarif_khusus': '1250',
+        'lead_time': '2',
+        'handler': 'MALANG AGEN',
+      };
+      final answer = await AnswerEngine(
+        FakeLookup(rows: [row], total: 1),
+      ).answer('tarif khusus Gadingkasri Klojen Malang 150 kg');
+      expect(answer, 'ESTIMASI TARIF PENGIRIMAN\\n'
+          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
+          '- Tarif khusus: minimum Reguler 20 kg, berat tagihan 150 kg × Rp 1.250/kg = Rp 187.500.\\n\\n'
+          'Estimasi Pengiriman: 2 hari\\n'
+          'Handler: MALANG AGEN');
+      expect(answer, isNot(contains('📦')));
+      expect(answer, isNot(contains('💰')));
+    });
+
     test('Wonosobo default menampilkan tarif 10 kg dan 20 kg tanpa tarif khusus; khusus hanya saat diminta', () async {
       final row = <String, Object?>{
         'province': 'JAWA TENGAH',
