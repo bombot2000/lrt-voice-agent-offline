@@ -193,13 +193,28 @@ class NextCargoTariffService {
       );
     }
     if (lower.endsWith('.json')) {
-      final decoded = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+      late final String jsonText;
+      try {
+        jsonText = utf8.decode(bytes);
+      } on FormatException {
+        throw const FormatException(
+          'JSON bukan UTF-8 yang valid. Ekspor ulang file sebagai JSON UTF-8.',
+        );
+      }
+      if (jsonText.contains('\\uFFFD')) {
+        throw const FormatException(
+          'JSON mengandung karakter pengganti (U+FFFD). Periksa encoding file.',
+        );
+      }
+      final decoded = jsonDecode(jsonText);
       final data = decoded is List
           ? decoded
           : decoded is Map
               ? (decoded['data'] ?? decoded['tarif'] ?? decoded['fares'])
               : null;
-      if (data is! List || data.isEmpty || data.first is! Map) {
+      if (data is! List ||
+          data.isEmpty ||
+          data.any((item) => item is! Map)) {
         throw const FormatException(
             'JSON harus berisi daftar objek tarif NEXT Cargo.');
       }
