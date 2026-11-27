@@ -170,6 +170,12 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     }
   }
 
+  Future<void> _stopSpeaking() async {
+    if (!_voice.isSpeaking) return;
+    await _voice.stopSpeaking();
+    if (mounted) _voice.setStatus(VoiceController.defaultStatus);
+  }
+
   Future<void> _toggleListening() async {
     if (_voice.isSpeaking) await _voice.stopSpeaking();
 
@@ -585,7 +591,29 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 9),
+                      const SizedBox(width: 4),
+                      if (_voice.isSpeaking)
+                        Tooltip(
+                          message: 'Hentikan suara',
+                          child: Material(
+                            color: const Color(0xFFFFE5E2),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: _stopSpeaking,
+                              child: const SizedBox(
+                                width: 44,
+                                height: 52,
+                                child: Icon(
+                                  Icons.stop_circle_outlined,
+                                  color: Color(0xFFB71C1C),
+                                  size: 27,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 5),
                       Tooltip(
                         message: _localRecording
                             ? 'Selesai merekam'
