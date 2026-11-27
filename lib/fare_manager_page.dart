@@ -305,7 +305,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text('\${preview.rowCount} baris valid',
+                    Text('${preview.rowCount} baris valid',
                         style: theme.textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w900)),
                     const Text('Asal tarif: MALANG KOTA',
