@@ -65,9 +65,12 @@ class VoiceController extends ChangeNotifier {
       });
       if (match.isNotEmpty) {
         _localeId = match.first.localeId;
+        setStatus(
+          'Bahasa Indonesia terdeteksi. Untuk pengenalan tanpa internet, pastikan paket bahasa offline sudah diunduh di pengaturan suara perangkat.',
+        );
       } else {
         setStatus(
-          'Bahasa Indonesia belum terdeteksi. Unduh paket bahasa Indonesia offline di pengaturan suara perangkat.',
+          'Bahasa Indonesia belum tersedia. Tambahkan bahasa Indonesia di pengaturan pengenalan suara perangkat.',
         );
       }
     } catch (_) {
@@ -118,16 +121,20 @@ class VoiceController extends ChangeNotifier {
   }
 
   void _onSpeechError(SpeechRecognitionError error) {
-    final msg = error.errorMsg;
-    if (msg.contains('language')) {
+    final code = error.errorMsg.toLowerCase();
+    if (code.contains('language') || code.contains('locale')) {
       _statusText =
-          'Paket bahasa Indonesia offline belum terpasang. Unduh di pengaturan suara/Google di perangkat.';
-    } else if (msg == 'error_permission') {
+          'Paket bahasa Indonesia belum siap. Unduh paket bahasa offline di pengaturan suara perangkat.';
+    } else if (code == 'error_permission') {
       _statusText = 'Izin mikrofon ditolak. Aktifkan di pengaturan aplikasi.';
-    } else if (msg == 'error_no_match' || msg == 'error_speech_timeout') {
-      _statusText = 'Suara tidak terdengar jelas. Coba lagi.';
+    } else if (code == 'error_no_match' || code == 'error_speech_timeout') {
+      _statusText = 'Suara tidak terdengar jelas. Coba bicara lebih dekat lalu ulangi.';
+    } else if (code == 'error_network' || code == 'error_network_timeout') {
+      _statusText =
+          'Mesin suara perangkat tidak dapat digunakan saat ini. Periksa paket bahasa offline atau coba lagi.';
     } else {
-      _statusText = 'Terjadi kesalahan suara ($msg). Coba lagi.';
+      _statusText =
+          'Pengenalan suara perangkat gagal dimulai. Periksa izin mikrofon dan paket bahasa Indonesia, lalu coba lagi.';
     }
     _isListening = false;
     _notify();
