@@ -407,6 +407,15 @@ class NextCargoTariffService {
         0;
   }
 
+  /// Menunjukkan apakah backup impor terakhir tersedia untuk dipulihkan.
+  static Future<bool> hasBackup() async {
+    final db = await open();
+    final available = Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT available FROM tariff_backup_meta WHERE id = 1',
+        )) ?? 0;
+    return available == 1;
+  }
+
   static Future<bool> restore() async {
     final db = await open();
     return db.transaction((t) async {

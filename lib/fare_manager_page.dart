@@ -12,6 +12,7 @@ class FareManagerPage extends StatefulWidget {
 
 class _FareManagerPageState extends State<FareManagerPage> {
   int count = 0;
+  bool _hasBackup = false;
   String? filename;
   ParsedTariff? parsed;
   bool replace = true;
@@ -25,10 +26,17 @@ class _FareManagerPageState extends State<FareManagerPage> {
 
   Future<void> reload() async {
     try {
-      final n = await NextCargoTariffService.count();
-      if (mounted) setState(() => count = n);
-    } catch (e) {
-      msg('Gagal membaca database: $e', true);
+      final values = await Future.wait<Object>([
+        NextCargoTariffService.count(),
+        NextCargoTariffService.hasBackup(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        count = values[0] as int;
+        _hasBackup = values[1] as bool;
+      });
+    } catch (_) {
+      msg('Data tarif belum dapat dibaca. Coba buka kembali halaman ini.', true);
     }
   }
 
@@ -73,7 +81,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       }
     } catch (e) {
       if (mounted) setState(clearSelection);
-      msg('File tarif tidak valid: $e', true);
+      msg('File tarif tidak dapat dibaca. Pastikan format dan kolomnya sesuai.', true);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -110,7 +118,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       setState(clearSelection);
       msg('$n baris tersimpan offline.');
     } catch (e) {
-      msg('Impor gagal: $e', true);
+      msg('Impor gagal. Data aktif tetap dipertahankan jika proses transaksi dibatalkan.', true);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -140,7 +148,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       await reload();
       msg(ok ? 'Backup dipulihkan.' : 'Backup belum tersedia.', !ok);
     } catch (e) {
-      msg('Pemulihan gagal: $e', true);
+      msg('Pemulihan backup gagal. Data tarif aktif tidak berhasil diubah.', true);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -234,9 +242,9 @@ class _FareManagerPageState extends State<FareManagerPage> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15)),
                   ),
-                  onPressed: busy ? null : restore,
+                  onPressed: busy || !_hasBackup ? null : restore,
                   icon: const Icon(Icons.restore_rounded),
-                  label: const Text('Pulihkan backup'),
+                  label: Text(_hasBackup ? 'Pulihkan backup' : 'Backup belum ada'),
                 ),
               ),
             ],
