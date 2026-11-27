@@ -201,7 +201,7 @@ class NextCargoTariffService {
           'JSON bukan UTF-8 yang valid. Ekspor ulang file sebagai JSON UTF-8.',
         );
       }
-      if (jsonText.contains('\\uFFFD')) {
+      if (jsonText.contains('\uFFFD')) {
         throw const FormatException(
           'JSON mengandung karakter pengganti (U+FFFD). Periksa encoding file.',
         );
