@@ -423,6 +423,16 @@ class NextCargoTariffService {
               .rawQuery('SELECT available FROM tariff_backup_meta WHERE id = 1')) ??
           0;
       if (available == 0) return false;
+      // Metadata bisa tidak sinkron akibat kerusakan/restore file database.
+      // Jangan pernah menghapus tarif aktif jika tabel backup kosong.
+      final backupCount = Sqflite.firstIntValue(
+            await t.rawQuery('SELECT COUNT(*) AS n FROM tariff_backup'),
+          ) ??
+          0;
+      if (backupCount <= 0) {
+        await t.update('tariff_backup_meta', {'available': 0}, where: 'id = 1');
+        return false;
+      }
       await t.delete('tariffs');
       await t.execute(
           'INSERT INTO tariffs (id,${cols.join(',')}) SELECT id,${cols.join(',')} FROM tariff_backup');

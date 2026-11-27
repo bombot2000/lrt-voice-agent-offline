@@ -404,6 +404,31 @@ void main() {
   });
 
 
+  test('restore refuses an empty backup and preserves active tariffs', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final parsed = await NextCargoTariffService.parse(
+      'active.csv',
+      bytes('$header\\n$row'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+    expect(await NextCargoTariffService.count(), 1);
+
+    final db = await NextCargoTariffService.open();
+    // Simulasikan metadata tersedia tetapi isi backup hilang/rusak.
+    await db.update('tariff_backup_meta', {'available': 1}, where: 'id = 1');
+    await db.delete('tariff_backup');
+
+    expect(await NextCargoTariffService.hasBackup(), isTrue);
+    expect(await NextCargoTariffService.restore(), isFalse);
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
+  });
+
   test('failed import rolls back active tariffs and preserves the previous backup', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
