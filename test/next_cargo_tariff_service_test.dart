@@ -210,13 +210,13 @@ void main() {
 
     final first = await NextCargoTariffService.parse(
       'first.csv',
-      bytes('$header\\n$firstRow'),
+      bytes('$header\n$firstRow'),
     );
     await NextCargoTariffService.importParsed(first, replace: true);
 
     final second = await NextCargoTariffService.parse(
       'alias.csv',
-      bytes('$header\\n$aliasRow'),
+      bytes('$header\n$aliasRow'),
     );
     await NextCargoTariffService.importParsed(second, replace: false);
 
