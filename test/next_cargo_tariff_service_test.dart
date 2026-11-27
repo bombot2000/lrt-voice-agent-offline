@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:excel/excel.dart' as xls;
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:cargo_voice_agent_offline/next_cargo_tariff_service.dart';
 
@@ -10,6 +12,49 @@ void main() {
   const header = 'Asal Kota,Tj. Propinsi,Tj. Kota,Tj. Kecamatan,Tj. Kelurahan,Handler,Stt Dooring,Lead Time,Tarif 10Kg,Min Reg,Tarif Reg,Min SP1,Tarif SP1,Min SP2,Tarif SP2,Min SP3,Tarif SP3,Tarif Khusus,Motor 100cc,Motor 125cc,Motor 150cc,Motor 250cc,Motor 500cc,Motor 750cc,Sepeda';
   const row = 'MALANG KOTA,BALI,BADUNG,ABIANSEMAL,ABIANSEMAL,DENPASAR AGEN,EKSPEDISI LAIN,6,0,25,4700,200,4500,500,4250,1000,4000,3400,705000,945900,1175000,1903500,2350000,3231250,293750';
   Uint8List bytes(String text) => Uint8List.fromList(utf8.encode(text));
+
+  test('upgrades an existing v1 database and preserves active tariffs and backup', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+
+    final root = await sqflite.getDatabasesPath();
+    final legacyDb = await databaseFactory.openDatabase(
+      p.join(root, 'next_cargo_tariffs.db'),
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute(
+            'CREATE TABLE tariffs (id INTEGER PRIMARY KEY AUTOINCREMENT, ${cols.map((c) => '$c TEXT').join(', ')}, UNIQUE(province,city,district,village))',
+          );
+          await db.execute(
+            'CREATE TABLE tariff_backup (id INTEGER PRIMARY KEY, ${cols.map((c) => '$c TEXT').join(', ')})',
+          );
+          final record = <String, Object?>{
+            for (final column in cols) column: '',
+            'origin': 'MALANG KOTA',
+            'province': 'JAWA TIMUR',
+            'city': 'LEGACY CITY',
+            'district': 'LEGACY DISTRICT',
+            'village': 'LEGACY VILLAGE',
+          };
+          final id = await db.insert('tariffs', record);
+          await db.insert('tariff_backup', {...record, 'id': id});
+        },
+      ),
+    );
+    await legacyDb.close();
+
+    final upgraded = await NextCargoTariffService.open();
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.hasBackup(), isTrue);
+    expect(await upgraded.query('tariff_backup'), hasLength(1));
+
+    expect(await NextCargoTariffService.restore(), isTrue);
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
+    await NextCargoTariffService.resetForTesting();
+  });
 
   test('rejects CSV with invalid UTF-8 bytes and explains required encoding', () async {
     final invalidUtf8 = Uint8List.fromList([
