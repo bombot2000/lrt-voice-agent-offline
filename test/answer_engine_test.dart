@@ -287,7 +287,7 @@ void main() {
       final a = await engine.answer('Bekasi Jati Asih 300 kg Reguler');
       
       expect(a, contains('Berat aktual: 300 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: SP2 (min. 300 kg)'));
     });
 
     test('berat tidak menghasilkan jawaban tanpa angka jika tarif Reguler kosong', () async {
@@ -311,13 +311,13 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 600 kg');
       expect(a, contains('Berat aktual: 600 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: SP2 (min. 500 kg)'));
       expect(a, contains('Rp 2.580.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP3:')));
     });
 
-    test('SP2 tidak berlaku di bawah minimum dan turun ke SP1', () async {
+    test('SP2 belum memenuhi minimum, memakai SP1 yang layak dan memberi catatan', () async {
       final row = <String, Object?>{
         ...bekasiJatiAsih,
         'min_sp2': '500',
@@ -325,10 +325,27 @@ void main() {
       };
       final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg SP2');
-      
+
       expect(a, contains('Berat aktual: 250 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: SP1 (min. 200 kg)'));
+      expect(a, contains('SP2 minimum 500 kg belum terpenuhi'));
+      expect(a, contains('perhitungan menggunakan SP1'));
       expect(a, contains('Rp 1.125.000'));
+    });
+
+    test('SP2 belum memenuhi minimum dan berat belum layak SP1, kembali ke Reguler', () async {
+      final row = <String, Object?>{
+        ...bekasiJatiAsih,
+        'min_sp2': '500',
+        'tarif_sp2': '4300',
+      };
+      final engine = AnswerEngine(FakeLookup(rows: [row], total: 1));
+      final a = await engine.answer('Bekasi Jati Asih 150 kg SP2');
+
+      expect(a, contains('Layanan: Reguler (min. 25 kg)'));
+      expect(a, contains('SP2 minimum 500 kg belum terpenuhi'));
+      expect(a, contains('perhitungan menggunakan Reguler'));
+      expect(a, contains('Rp 705.000'));
     });
 
     test('SP3 dipilih saat berat memenuhi minimum SP3', () async {
