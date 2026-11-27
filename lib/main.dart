@@ -151,6 +151,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> with WidgetsB
       await _finishOfflineRecording();
       return;
     }
+    _voice.setStatus('Menyiapkan mesin pengenalan suara offline...');
     try {
       await _offlineAsr.startRecording();
       if (!mounted) return;
