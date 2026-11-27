@@ -323,6 +323,7 @@ void main() {
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
     expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
     expect(await NextCargoTariffService.restore(), isFalse);
     expect(await NextCargoTariffService.count(), 1);
   });
@@ -375,6 +376,7 @@ void main() {
     );
     await NextCargoTariffService.importParsed(original, replace: true);
     expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
 
     final secondRow = row.replaceFirst(
       'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
@@ -386,11 +388,13 @@ void main() {
     );
     await NextCargoTariffService.importParsed(addition, replace: false);
 
+    expect(await NextCargoTariffService.hasBackup(), isTrue);
     expect(await NextCargoTariffService.count(), 2);
     expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
     expect(await NextCargoTariffService.findDestination('DENPASAR'), isNotEmpty);
 
     expect(await NextCargoTariffService.restore(), isTrue);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
     expect(await NextCargoTariffService.count(), 1);
     expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
     expect(await NextCargoTariffService.findDestination('DENPASAR'), isEmpty);
