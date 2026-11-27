@@ -392,7 +392,6 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       if (minimum == null || rate == null || minimum <= 0 || rate <= 0) continue;
 
       final billable = billableWeight(weight, minimum);
-      final regularMinimum = parseTariffNumber(r['min_reg']) ?? minimum;
       tariffLines.add('Berat aktual: ${formatPlainNumber(weight)} kg');
       if (weight < minimum) {
         tariffLines.add('Berat tagihan: ${formatPlainNumber(billable)} kg');
