@@ -91,17 +91,23 @@ class AnswerEngine {
       matches = await tariffs.find(query);
     } catch (_) {
       return const Reply(
-          'Data tarif tidak dapat dibaca. Coba lagi, atau impor ulang lewat menu Kelola Data Ongkir.');
+          'Data tarif tidak dapat dibaca. Coba lagi, atau impor ulang lewat menu Kelola data tarif.');
     }
 
     if (matches.isEmpty) {
       final total = await tariffs.count();
       if (total == 0) {
         return const Reply(
-            'Data tarif kargo belum diimpor. Buka menu Kelola Data Ongkir untuk memasukkan file tarif terbaru.');
+            'Data tarif kargo belum diimpor. Buka menu Kelola data tarif untuk memasukkan file tarif terbaru.');
       }
+      final destinationTokensForMessage = destinationTokens(query);
+      final destination = destinationTokensForMessage
+          .map(formatRegionName)
+          .where((part) => part.isNotEmpty)
+          .join(' ');
+      final searched = destination.isEmpty ? 'yang disebutkan' : destination;
       return Reply(
-          'Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $total tujuan. Sebutkan kota serta kecamatan atau kelurahan tujuan.');
+          "Tujuan '$searched' tidak ditemukan. Tarif NEXT Cargo dari MALANG KOTA tersedia untuk $total tujuan. Coba sebut kecamatan atau kota.");
     }
     if (matches.length > 1) return _ambiguous(matches, query);
     return Reply(buildFareAnswer(query, matches.first));
