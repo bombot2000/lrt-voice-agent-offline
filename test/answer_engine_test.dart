@@ -549,8 +549,10 @@ void main() {
       final engine = AnswerEngine(FakeLookup(total: 3));
       expect(await engine.answer('ongkir paket 5 kg'),
           contains('tersedia untuk 3 tujuan'));
-      expect(await engine.answer('ke Atlantis'),
-          contains('tersedia untuk 3 tujuan'));
+      final missing = await engine.answer('ke Atlantis');
+      expect(missing, contains("Tujuan 'Atlantis' tidak ditemukan."));
+      expect(missing, contains('tersedia untuk 3 tujuan'));
+      expect(missing, contains('Coba sebut kecamatan atau kota.'));
     });
 
     test('database kosong mengarahkan ke menu impor', () async {
