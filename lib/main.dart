@@ -72,6 +72,9 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   // Jawaban dibacakan hanya bila pertanyaan terakhir datang lewat suara.
   bool _voiceMode = true;
 
+  // Teks sementara dari speech_to_text; tidak disimpan sebagai pesan final.
+  String _liveTranscript = '';
+
 
   // Guard agar hasil final yang terkirim dua kali tidak diproses ganda.
   String _lastQuery = '';
@@ -99,6 +102,14 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   }
 
   void _setStatus(String text) => _voice.setStatus(text);
+
+  void _updatePartialTranscript(String text) {
+    if (!mounted) return;
+    final value = text.trim();
+    if (value == VoiceController.listeningStatus) return;
+    if (_liveTranscript == value) return;
+    setState(() => _liveTranscript = value);
+  }
 
   Future<void> _openAsrSettings() async {
     await showDialog<void>(
@@ -169,11 +180,15 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
     if (_voice.isListening) {
       await _voice.stopListening();
+      if (mounted) setState(() => _liveTranscript = '');
       return;
     }
     await _voice.startListening(
-      onPartialResult: _setStatus,
-      onFinalResult: (query) => _handleQuery(query, speak: true),
+      onPartialResult: _updatePartialTranscript,
+      onFinalResult: (query) {
+        if (mounted) setState(() => _liveTranscript = '');
+        _handleQuery(query, speak: true);
+      },
     );
   }
 
@@ -186,6 +201,9 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     }
     _lastQuery = query;
     _lastQueryTime = now;
+    if (_liveTranscript.isNotEmpty && mounted) {
+      setState(() => _liveTranscript = '');
+    }
     _voiceMode = speak;
     // Sembunyikan saran lama segera setelah pertanyaan baru diterima.
     // Pending query di AnswerEngine tetap dipertahankan agar jawaban lanjutan
@@ -302,6 +320,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   @override
   Widget build(BuildContext context) {
     final isFirstMessage = _messages.isEmpty;
+    final showLiveTranscript = _voice.isListening && !_useOfflineAsr;
     final listeningLabel = _localRecording
         ? 'Merekam suara offline • ketuk untuk selesai'
         : _voice.isListening
@@ -342,8 +361,76 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
               controller: _scrollController,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-              itemCount: _messages.length + (isFirstMessage ? 1 : 0),
+              itemCount: _messages.length +
+                  (isFirstMessage ? 1 : 0) +
+                  (showLiveTranscript ? 1 : 0),
               itemBuilder: (context, index) {
+                final liveIndex = _messages.length + (isFirstMessage ? 1 : 0);
+                if (showLiveTranscript && index == liveIndex) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const CircleAvatar(
+                          radius: 15,
+                          backgroundColor: Color(0xFFFFE3E0),
+                          foregroundColor: Color(0xFFB71C1C),
+                          child: Icon(Icons.graphic_eq_rounded, size: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.80,
+                              minHeight: 48,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF8F7),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                  color: const Color(0xFFEBC9C5)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Transkrip sementara',
+                                  style: TextStyle(
+                                    color: Color(0xFFB71C1C),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _liveTranscript.isEmpty
+                                      ? 'Mendengarkan suara Anda…'
+                                      : _liveTranscript,
+                                  style: const TextStyle(
+                                    color: Color(0xFF252525),
+                                    fontSize: 14.5,
+                                    height: 1.45,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Periksa tujuan dan berat sebelum hasil dihitung',
+                                  style: TextStyle(
+                                    color: Color(0xFF777777),
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 if (isFirstMessage && index == 0) {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 18),
