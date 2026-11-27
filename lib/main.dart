@@ -79,11 +79,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   DateTime _lastQueryTime = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void> _queryQueue = Future<void>.value();
 
-  final List<ChatMessage> _messages = [
-    ChatMessage.agent(
-      'Halo, saya asisten ongkir NEXT Cargo mode offline. Sebutkan tujuan dan berat, misalnya "ongkir ke Abiansemal Badung 20 kilo".',
-    ),
-  ];
+  final List<ChatMessage> _messages = [];
 
   @override
   void initState() {
@@ -260,12 +256,20 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
     await _handleQuery(query, speak: false);
   }
 
+  bool _isTariffResult(String text) {
+    final value = text.trimLeft();
+    return value.startsWith('TARIF PENGIRIMAN') ||
+        value.startsWith('ESTIMASI TARIF PENGIRIMAN') ||
+        value.startsWith('Tarif NEXT Cargo ke ');
+  }
+
   void _showReply(String userText, Reply reply, {required bool speak}) {
     _voice.setStatus(VoiceController.defaultStatus);
     setState(() {
       _messages.add(ChatMessage.user(userText));
       _messages.add(ChatMessage.agent(
         speak ? reply.text : formatTypedReply(reply.text),
+        showActions: _isTariffResult(reply.text),
       ));
       _choices = reply.choices;
     });
@@ -297,7 +301,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isFirstMessage = _messages.length == 1;
+    final isFirstMessage = _messages.isEmpty;
     final listeningLabel = _localRecording
         ? 'Merekam suara offline • ketuk untuk selesai'
         : _voice.isListening
