@@ -262,10 +262,13 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> with WidgetsB
     // yang sama dua kali atau meninggalkan pilihan lama di layar.
     if (!_choices.contains(choice)) return;
     setState(() => _choices = const []);
-    if (_voice.isSpeaking) await _voice.stopSpeaking();
     final selectedLabel = 'Tujuan dipilih: ${choice.label}';
+    // Masukkan aksi pilihan ke antrean sebelum await apa pun. Jika pengguna
+    // segera mengetik pertanyaan baru, pilihan lama tetap diproses lebih dulu
+    // terhadap pending query yang memang menghasilkan daftar pilihan ini.
     _queryQueue = _queryQueue.catchError((_) {}).then((_) async {
       try {
+        if (_voice.isSpeaking) await _voice.stopSpeaking();
         final reply = _engine.select(choice);
         if (!mounted) return;
         _showReply(selectedLabel, reply, speak: _voiceMode);
