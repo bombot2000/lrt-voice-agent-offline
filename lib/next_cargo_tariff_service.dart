@@ -107,7 +107,7 @@ class NextCargoTariffService {
     final root = await getDatabasesPath();
     _db = await openDatabase(
       p.join(root, 'next_cargo_tariffs.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute(
             'CREATE TABLE tariffs (id INTEGER PRIMARY KEY AUTOINCREMENT, ${sqlCols()}, UNIQUE(province,city,district,village))');
@@ -118,6 +118,28 @@ class NextCargoTariffService {
         await db.insert('tariff_backup_meta', {'id': 1, 'available': 0});
         for (final f in _addressFields) {
           await db.execute('CREATE INDEX idx_tariff_$f ON tariffs($f)');
+        }
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Database v1 sudah berisi tarif dan tabel tariff_backup, tetapi
+        // belum memiliki metadata ketersediaan backup. Migrasi ini hanya
+        // menambah tabel metadata; data tarif dan backup lama tidak disentuh.
+        if (oldVersion < 2) {
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS tariff_backup (id INTEGER PRIMARY KEY, ${sqlCols()})',
+          );
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS tariff_backup_meta (id INTEGER PRIMARY KEY CHECK(id = 1), available INTEGER NOT NULL)',
+          );
+          final backupCount = Sqflite.firstIntValue(
+                await db.rawQuery('SELECT COUNT(*) AS n FROM tariff_backup'),
+              ) ??
+              0;
+          await db.insert(
+            'tariff_backup_meta',
+            {'id': 1, 'available': backupCount > 0 ? 1 : 0},
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
       },
     );
