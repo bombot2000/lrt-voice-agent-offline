@@ -376,12 +376,44 @@ class NextCargoTariffService {
         {'available': previousCount > 0 ? 1 : 0},
         where: 'id = 1',
       );
-      if (replace) await txn.delete('tariffs');
+      // In merge mode, match existing destinations using the same normalized
+      // key as the file parser. SQLite's UNIQUE constraint is text-exact and
+      // would otherwise allow aliases such as "KAB. MALANG" and "KAB MALANG".
+      final existingIds = <String, int>{};
+      if (replace) {
+        await txn.delete('tariffs');
+      } else {
+        final existingRows = await txn.query(
+          'tariffs',
+          columns: ['id', ..._addressFields],
+        );
+        for (final row in existingRows) {
+          final key = _addressFields
+              .map((field) => norm((row[field] ?? '').toString()))
+              .join('|');
+          existingIds.putIfAbsent(key, () => row['id'] as int);
+        }
+      }
+
       var batch = txn.batch();
       var pending = 0;
       for (final rec in parsed.records) {
-        batch.insert('tariffs', rec,
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        final key = _destinationKey(rec);
+        final existingId = existingIds[key];
+        if (existingId != null) {
+          batch.update(
+            'tariffs',
+            rec,
+            where: 'id = ?',
+            whereArgs: [existingId],
+          );
+        } else {
+          batch.insert(
+            'tariffs',
+            rec,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
         count++;
         pending++;
         if (pending >= 400) {
