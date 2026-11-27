@@ -46,17 +46,20 @@ Future<void> _whisperWorkerMain(Map<String, Object?> args) async {
       debug: false,
       provider: 'cpu',
     );
-    recognizer = OfflineRecognizer(OfflineRecognizerConfig(model: model));
-    commands = ReceivePort();
-    readyPort.send(commands.sendPort);
+    final activeRecognizer =
+        OfflineRecognizer(OfflineRecognizerConfig(model: model));
+    recognizer = activeRecognizer;
+    final commandPort = ReceivePort();
+    commands = commandPort;
+    readyPort.send(commandPort.sendPort);
 
-    await for (final raw in commands) {
+    await for (final raw in commandPort) {
       if (raw is! Map) continue;
       final replyTo = raw['replyTo'];
       if (replyTo is! SendPort) continue;
 
       if (raw['type'] == 'dispose') {
-        recognizer.free();
+        activeRecognizer.free();
         recognizer = null;
         replyTo.send(true);
         break;
@@ -77,13 +80,13 @@ Future<void> _whisperWorkerMain(Map<String, Object?> args) async {
           bytes.offsetInBytes,
           bytes.lengthInBytes ~/ Float32List.bytesPerElement,
         );
-        final stream = recognizer.createStream();
+        final stream = activeRecognizer.createStream();
         try {
           stream.acceptWaveform(samples: samples, sampleRate: 16000);
-          recognizer.decode(stream);
+          activeRecognizer.decode(stream);
           replyTo.send({
             'ok': true,
-            'text': recognizer.getResult(stream).text.trim(),
+            'text': activeRecognizer.getResult(stream).text.trim(),
           });
         } finally {
           stream.free();
@@ -132,6 +135,7 @@ class OfflineAsrService {
   bool _recording = false;
   bool _busy = false;
   HttpClient? _downloadClient;
+  Future<void>? _loadingModel;
 
   bool get isRecording => _recording;
   bool get isReady => _workerSendPort != null;
@@ -276,6 +280,19 @@ class OfflineAsrService {
 
   Future<void> loadModel() async {
     if (_workerSendPort != null) return;
+    final pending = _loadingModel;
+    if (pending != null) return pending;
+
+    final future = _startModelWorker();
+    _loadingModel = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_loadingModel, future)) _loadingModel = null;
+    }
+  }
+
+  Future<void> _startModelWorker() async {
     if (!await isModelInstalled) {
       throw StateError('Model suara belum diunduh atau tidak valid.');
     }
