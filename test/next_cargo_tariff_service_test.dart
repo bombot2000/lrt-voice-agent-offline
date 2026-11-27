@@ -166,6 +166,31 @@ void main() {
       );
     });
   });
+  test('exports active tariffs as a JSON file that can be imported again', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final parsed = await NextCargoTariffService.parse(
+      'source.csv',
+      bytes('$header\\n$row'),
+    );
+    await NextCargoTariffService.importParsed(parsed, replace: true);
+
+    final exported = await NextCargoTariffService.exportJson();
+    final document = jsonDecode(utf8.decode(exported)) as Map<String, dynamic>;
+    expect(document['format'], 'next_cargo_tariff_backup');
+    expect(document['version'], 1);
+    expect(document['data'], isA<List<dynamic>>());
+
+    final restored = await NextCargoTariffService.parse('backup.json', exported);
+    expect(restored.rowCount, 1);
+    expect(restored.records.single['origin'], 'MALANG KOTA');
+    expect(restored.records.single['district'], 'ABIANSEMAL');
+    expect(restored.records.single['tarif_reg'], '4700');
+  });
+
   test('city-only lookup returns every distinct district beyond eight rows', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
