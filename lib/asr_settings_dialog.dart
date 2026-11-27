@@ -23,6 +23,7 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
   bool _installed = false;
   bool _downloading = false;
   bool _checking = true;
+  bool _cancelRequested = false;
   double _progress = 0;
   String? _downloadError;
 
@@ -52,6 +53,7 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
   Future<void> _download() async {
     setState(() {
       _downloading = true;
+      _cancelRequested = false;
       _progress = 0;
       _downloadError = null;
     });
@@ -70,9 +72,17 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
       if (!mounted) return;
       setState(() {
         _downloading = false;
-        _downloadError = 'Model gagal diunduh. Periksa koneksi internet dan ruang penyimpanan, lalu coba lagi.';
+        _downloadError = _cancelRequested
+            ? 'Unduhan dibatalkan. File sementara dibersihkan.'
+            : 'Model gagal diunduh. Periksa koneksi internet dan ruang penyimpanan, lalu coba lagi.';
       });
     }
+  }
+
+  void _cancelDownload() {
+    if (!_downloading) return;
+    setState(() => _cancelRequested = true);
+    widget.service.cancelDownload();
   }
 
   void _activate(bool enabled) {
@@ -85,7 +95,9 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return PopScope(
+      canPop: !_downloading,
+      child: AlertDialog(
       title: const Text('Mesin Suara Offline'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -93,7 +105,8 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
         children: [
           const Text(
             'Whisper Tiny multilingual INT8 berjalan langsung di HP. '
-            'Model sekitar 104 MB, diunduh satu kali dan disimpan di penyimpanan aplikasi.',
+            'Model sekitar 104 MB, diunduh satu kali dan disimpan di penyimpanan aplikasi. '
+            'Disarankan memakai Wi-Fi dan memastikan ruang penyimpanan cukup.',
           ),
           const SizedBox(height: 12),
           Text(_checking
@@ -114,10 +127,16 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: _downloading ? null : () => Navigator.pop(context),
-          child: const Text('Tutup'),
-        ),
+        if (_downloading)
+          TextButton(
+            onPressed: _cancelDownload,
+            child: const Text('Batalkan unduhan'),
+          )
+        else
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
         if (!_installed && !_checking)
           FilledButton(
             onPressed: _downloading ? null : _download,
@@ -134,6 +153,7 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
             child: const Text('Gunakan suara bawaan'),
           ),
       ],
+    ),
     );
   }
 }

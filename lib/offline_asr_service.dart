@@ -47,6 +47,7 @@ class OfflineAsrService {
   String? _recordingPath;
   bool _recording = false;
   bool _busy = false;
+  HttpClient? _downloadClient;
 
   bool get isRecording => _recording;
   bool get isReady => _recognizer != null;
@@ -89,6 +90,7 @@ class OfflineAsrService {
       client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 30)
         ..idleTimeout = const Duration(seconds: 45);
+      _downloadClient = client;
 
       for (final model in _modelFiles) {
         final target = File(p.join(modelDirectory.path, model.name));
@@ -158,8 +160,15 @@ class OfflineAsrService {
       rethrow;
     } finally {
       client?.close(force: true);
+      if (identical(_downloadClient, client)) _downloadClient = null;
       _busy = false;
     }
+  }
+
+  /// Aborts an active model download. Partial files are removed by the
+  /// download cleanup path before the operation completes.
+  void cancelDownload() {
+    _downloadClient?.close(force: true);
   }
 
   Future<void> loadModel() async {
