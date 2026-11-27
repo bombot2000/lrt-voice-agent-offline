@@ -621,28 +621,36 @@ class NextCargoTariffService {
     // substring. Contoh: pencarian BATU menempatkan "KOTA BATU"
     // di atas "BATUAN" atau "BATURETNO", tanpa menghilangkan fallback fuzzy.
     final exactParts = <String>[];
+    final exactArgs = <Object?>[];
     for (final token in tokens) {
-      final safe = token.toUpperCase().replaceAll("'", "''");
+      final normalized = token.toUpperCase();
       for (final field in _addressFields) {
         exactParts.add(
-          "(UPPER($field) = '$safe' OR "
-          "UPPER($field) LIKE '$safe %' OR "
-          "UPPER($field) LIKE '% $safe' OR "
-          "UPPER($field) LIKE '% $safe %')",
+          "(UPPER($field) = ? OR "
+          "UPPER($field) LIKE ? OR "
+          "UPPER($field) LIKE ? OR "
+          "UPPER($field) LIKE ?)",
         );
+        exactArgs.addAll([
+          normalized,
+          '$normalized %',
+          '% $normalized',
+          '% $normalized %',
+        ]);
       }
     }
     final exactRank = exactParts.isEmpty
         ? '1'
         : 'CASE WHEN ${exactParts.join(' OR ')} THEN 0 ELSE 1 END';
 
-    return db.query(
-      'tariffs',
-      columns: cols,
-      where: clauses.join(' AND '),
-      whereArgs: args,
-      orderBy: '$exactRank, province ASC, city ASC, district ASC, village ASC',
-      limit: util.kMaxTariffMatches,
+    // Nilai token tetap dikirim sebagai parameter, termasuk bagian ORDER BY.
+    // Ini menghindari penyusunan SQL dari teks pencarian pengguna.
+    return db.rawQuery(
+      'SELECT ${cols.join(', ')} FROM tariffs '
+      'WHERE ${clauses.join(' AND ')} '
+      'ORDER BY $exactRank, province ASC, city ASC, district ASC, village ASC '
+      'LIMIT ?',
+      [...args, ...exactArgs, util.kMaxTariffMatches],
     );
   }
 
