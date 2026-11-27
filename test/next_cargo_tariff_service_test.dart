@@ -191,6 +191,42 @@ void main() {
     expect(restored.records.single['tarif_reg'], '4700');
   });
 
+  test('merge updates normalized destination aliases instead of inserting duplicates', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final firstRow = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KAB. MALANG,PAKISAJI,PAKISAJI',
+    );
+    final aliasRow = row
+        .replaceFirst(
+          'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+          'JAWA TIMUR,KAB MALANG,PAKISAJI,PAKISAJI',
+        )
+        .replaceFirst(',4700,', ',4800,');
+
+    final first = await NextCargoTariffService.parse(
+      'first.csv',
+      bytes('$header\\n$firstRow'),
+    );
+    await NextCargoTariffService.importParsed(first, replace: true);
+
+    final second = await NextCargoTariffService.parse(
+      'alias.csv',
+      bytes('$header\\n$aliasRow'),
+    );
+    await NextCargoTariffService.importParsed(second, replace: false);
+
+    expect(await NextCargoTariffService.count(), 1);
+    final found = await NextCargoTariffService.findDestination('Pakisaji Malang');
+    expect(found.length, 1);
+    expect(found.single['city'], 'KAB MALANG');
+    expect(found.single['tarif_reg'], '4800');
+  });
+
   test('city-only lookup returns every distinct district beyond eight rows', () async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
