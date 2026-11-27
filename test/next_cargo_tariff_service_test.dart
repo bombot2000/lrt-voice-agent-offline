@@ -403,4 +403,67 @@ void main() {
     expect(await NextCargoTariffService.count(), 1);
   });
 
+
+  test('failed import rolls back active tariffs and preserves the previous backup', () async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    await NextCargoTariffService.resetForTesting();
+    addTearDown(NextCargoTariffService.resetForTesting);
+
+    final original = await NextCargoTariffService.parse(
+      'original.csv',
+      bytes('$header\n$row'),
+    );
+    await NextCargoTariffService.importParsed(original, replace: true);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
+
+    final secondRow = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KOTA MALANG,DENPASAR,DENPASAR',
+    );
+    final second = await NextCargoTariffService.parse(
+      'second.csv',
+      bytes('$header\n$secondRow'),
+    );
+    await NextCargoTariffService.importParsed(second, replace: true);
+    expect(await NextCargoTariffService.hasBackup(), isTrue);
+
+    // Cache pencarian dipanaskan sebelum transaksi yang sengaja digagalkan.
+    expect(await NextCargoTariffService.findDestination('DENPASAR'), isNotEmpty);
+
+    final db = await NextCargoTariffService.open();
+    await db.execute('''
+      CREATE TRIGGER reject_test_tariff
+      BEFORE INSERT ON tariffs
+      WHEN NEW.city = 'KOTA GAGAL'
+      BEGIN
+        SELECT RAISE(ABORT, 'simulated import failure');
+      END
+    ''');
+
+    final failingRow = row.replaceFirst(
+      'BALI,BADUNG,ABIANSEMAL,ABIANSEMAL',
+      'JAWA TIMUR,KOTA GAGAL,DENPASAR,DENPASAR',
+    );
+    final failing = await NextCargoTariffService.parse(
+      'failing.csv',
+      bytes('$header\n$failingRow'),
+    );
+    await expectLater(
+      NextCargoTariffService.importParsed(failing, replace: true),
+      throwsA(anything),
+    );
+
+    expect(await NextCargoTariffService.count(), 1);
+    expect(await NextCargoTariffService.hasBackup(), isTrue);
+    expect(await NextCargoTariffService.findDestination('DENPASAR'), isNotEmpty);
+    expect(await NextCargoTariffService.findDestination('KOTA GAGAL'), isEmpty);
+
+    // Backup dari sebelum impor gagal tetap dapat dipulihkan.
+    expect(await NextCargoTariffService.restore(), isTrue);
+    expect(await NextCargoTariffService.hasBackup(), isFalse);
+    expect(await NextCargoTariffService.findDestination('ABIANSEMAL'), isNotEmpty);
+    expect(await NextCargoTariffService.findDestination('DENPASAR'), isEmpty);
+  });
+
 }
