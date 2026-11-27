@@ -240,7 +240,8 @@ void main() {
       final a = await engine.answer('Bekasi Jati Asih 30 kg SP1');
       
       expect(a, contains('Berat aktual: 30 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: Reguler (min. 25 kg)'));
+      expect(a, contains('SP1 minimum 200 kg belum terpenuhi'));
       expect(a, contains('Rp 141.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
@@ -252,7 +253,8 @@ void main() {
       final a = await engine.answer('Bekasi Jati Asih 250 kg SP3');
       
       expect(a, contains('Berat aktual: 250 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: SP1 (min. 200 kg)'));
+      expect(a, contains('SP3 minimum 1000 kg belum terpenuhi'));
       expect(a, contains('Rp 1.125.000'));
     });
 
@@ -270,7 +272,7 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [bekasiJatiAsih], total: 1));
       final a = await engine.answer('Bekasi Jati Asih 250 kg');
       expect(a, contains('Berat aktual: 250 kg'));
-      expect(a, contains('Layanan: Reguler'));
+      expect(a, contains('Layanan: SP1 (min. 200 kg)'));
       expect(a, contains('Rp 1.125.000'));
       expect(a, isNot(contains('SP1:')));
       expect(a, isNot(contains('SP2:')));
