@@ -160,7 +160,7 @@ class VoiceController extends ChangeNotifier {
       );
     } catch (error) {
       _isListening = false;
-      _statusText = 'Gagal memulai pengenalan suara: $error';
+      _statusText = 'Pengenalan suara tidak dapat dimulai. Periksa izin mikrofon dan coba lagi.';
       _notify();
     }
   }

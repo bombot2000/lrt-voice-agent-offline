@@ -144,7 +144,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
         if (mounted && _localRecording) _finishOfflineRecording();
       });
     } catch (e) {
-      _setStatus('Gagal memulai suara lokal: $e');
+      _setStatus('Mikrofon tidak dapat dimulai. Periksa izin mikrofon dan coba lagi.');
     }
   }
 
@@ -166,7 +166,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       _setStatus(transcript);
       await _handleQuery(transcript.trim(), speak: true);
     } catch (e) {
-      _setStatus('Pengenalan suara lokal gagal: $e');
+      _setStatus('Suara belum berhasil dikenali. Pastikan model offline terpasang, lalu coba lagi.');
     }
   }
 

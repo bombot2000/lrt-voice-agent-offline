@@ -44,7 +44,7 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
       if (!mounted) return;
       setState(() {
         _checking = false;
-        _downloadError = 'Gagal memeriksa model: $error';
+        _downloadError = 'Status model belum dapat diperiksa. Periksa penyimpanan perangkat lalu coba lagi.';
       });
     }
   }
@@ -70,7 +70,7 @@ class _AsrSettingsDialogState extends State<AsrSettingsDialog> {
       if (!mounted) return;
       setState(() {
         _downloading = false;
-        _downloadError = 'Unduhan gagal: $error';
+        _downloadError = 'Model gagal diunduh. Periksa koneksi internet dan ruang penyimpanan, lalu coba lagi.';
       });
     }
   }
