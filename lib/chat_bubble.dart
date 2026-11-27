@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'tariff_utils.dart' show formatTypedReply;
 import 'chat_message.dart';
+import 'answer_engine.dart' show Choice;
+import 'destination_choice_panel.dart';
 
 /// Menonjolkan nominal hasil perhitungan tanpa mengubah teks jawaban engine.
 TextSpan formatCargoMessage(String message, {required bool isUser}) {
@@ -41,8 +43,13 @@ TextSpan formatCargoMessage(String message, {required bool isUser}) {
 }
 
 class ChatBubble extends StatelessWidget {
-  const ChatBubble({super.key, required this.message});
+  const ChatBubble({
+    super.key,
+    required this.message,
+    this.onChoiceSelected,
+  });
   final ChatMessage message;
+  final ValueChanged<Choice>? onChoiceSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +107,14 @@ class ChatBubble extends StatelessWidget {
               if (isUser) const SizedBox(width: 23),
             ],
           ),
+          if (!isUser && message.choices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 38, top: 8, right: 4),
+              child: DestinationChoicePanel(
+                choices: message.choices,
+                onSelected: (choice) => onChoiceSelected?.call(choice),
+              ),
+            ),
           if (!isUser && message.showActions)
             Padding(
               padding: const EdgeInsets.only(left: 38, top: 2),

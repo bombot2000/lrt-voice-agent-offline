@@ -4,7 +4,6 @@ import 'voice_controller.dart';
 import 'chat_message.dart';
 import 'chat_bubble.dart';
 import 'asr_settings_dialog.dart';
-import 'destination_choice_panel.dart';
 import 'package:flutter/material.dart';
 import 'fare_manager_page.dart';
 import 'answer_engine.dart';
@@ -270,6 +269,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
       _messages.add(ChatMessage.agent(
         speak ? reply.text : formatTypedReply(reply.text),
         showActions: _isTariffResult(reply.text),
+        choices: reply.choices,
       ));
       _choices = reply.choices;
     });
@@ -408,7 +408,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                 }
                 final messageIndex = index - (isFirstMessage ? 1 : 0);
                 final msg = _messages[messageIndex];
-                return ChatBubble(message: msg);
+                return ChatBubble(message: msg, onChoiceSelected: _handleChoice);
               },
             ),
           ),
@@ -471,10 +471,6 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
                           padding: EdgeInsets.zero,
                         ),
                     ],
-                  ),
-                  DestinationChoicePanel(
-                    choices: _choices,
-                    onSelected: _handleChoice,
                   ),
                   const SizedBox(height: 10),
                   Row(
