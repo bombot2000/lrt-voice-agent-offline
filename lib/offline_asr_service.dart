@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -20,6 +21,85 @@ class _ModelFile {
 
 /// Whisper Tiny multilingual INT8. Model disimpan di app-support, bukan APK.
 /// SHA-256 memverifikasi unduhan sebelum file dianggap siap digunakan.
+/// Persistent native recognizer worker. The ONNX recognizer and synchronous
+/// decode calls stay off the Flutter UI isolate; only PCM bytes cross isolates.
+Future<void> _whisperWorkerMain(Map<String, Object?> args) async {
+  final readyPort = args['readyPort'] as SendPort;
+  final encoderPath = args['encoderPath'] as String;
+  final decoderPath = args['decoderPath'] as String;
+  final tokensPath = args['tokensPath'] as String;
+  ReceivePort? commands;
+  OfflineRecognizer? recognizer;
+
+  try {
+    await initBindingsAsync();
+    final model = OfflineModelConfig(
+      whisper: OfflineWhisperModelConfig(
+        encoder: encoderPath,
+        decoder: decoderPath,
+        language: 'id',
+        task: 'transcribe',
+      ),
+      tokens: tokensPath,
+      modelType: 'whisper',
+      numThreads: 2,
+      debug: false,
+      provider: 'cpu',
+    );
+    recognizer = OfflineRecognizer(OfflineRecognizerConfig(model: model));
+    commands = ReceivePort();
+    readyPort.send(commands.sendPort);
+
+    await for (final raw in commands) {
+      if (raw is! Map) continue;
+      final replyTo = raw['replyTo'];
+      if (replyTo is! SendPort) continue;
+
+      if (raw['type'] == 'dispose') {
+        recognizer.free();
+        recognizer = null;
+        replyTo.send(true);
+        break;
+      }
+
+      if (raw['type'] != 'decode') continue;
+      try {
+        final transferable = raw['samples'];
+        if (transferable is! TransferableTypedData) {
+          throw const FormatException('Data audio tidak valid.');
+        }
+        final bytes = transferable.materialize().asUint8List();
+        if (bytes.lengthInBytes % Float32List.bytesPerElement != 0) {
+          throw const FormatException('Data audio tidak lengkap.');
+        }
+        final samples = Float32List.view(
+          bytes.buffer,
+          bytes.offsetInBytes,
+          bytes.lengthInBytes ~/ Float32List.bytesPerElement,
+        );
+        final stream = recognizer.createStream();
+        try {
+          stream.acceptWaveform(samples: samples, sampleRate: 16000);
+          recognizer.decode(stream);
+          replyTo.send({
+            'ok': true,
+            'text': recognizer.getResult(stream).text.trim(),
+          });
+        } finally {
+          stream.free();
+        }
+      } catch (error) {
+        replyTo.send({'ok': false, 'error': error.toString()});
+      }
+    }
+  } catch (error) {
+    readyPort.send({'error': error.toString()});
+  } finally {
+    commands?.close();
+    recognizer?.free();
+  }
+}
+
 class OfflineAsrService {
   static const int sampleRate = 16000;
   static const int _totalBytes = 103609903;
@@ -46,15 +126,15 @@ class OfflineAsrService {
   ];
 
   final AudioRecorder _recorder = AudioRecorder();
-  OfflineRecognizer? _recognizer;
+  Isolate? _recognizerIsolate;
+  SendPort? _workerSendPort;
   String? _recordingPath;
   bool _recording = false;
   bool _busy = false;
   HttpClient? _downloadClient;
-  bool _bindingsInitialized = false;
 
   bool get isRecording => _recording;
-  bool get isReady => _recognizer != null;
+  bool get isReady => _workerSendPort != null;
 
   Future<Directory> _modelDirectory() async {
     final root = await getApplicationSupportDirectory();
@@ -195,34 +275,76 @@ class OfflineAsrService {
   }
 
   Future<void> loadModel() async {
-    if (_recognizer != null) return;
+    if (_workerSendPort != null) return;
     if (!await isModelInstalled) {
       throw StateError('Model suara belum diunduh atau tidak valid.');
     }
     final directory = await _modelDirectory();
-    final whisper = OfflineWhisperModelConfig(
-      encoder: p.join(directory.path, 'tiny-encoder.int8.onnx'),
-      decoder: p.join(directory.path, 'tiny-decoder.int8.onnx'),
-      language: 'id',
-      task: 'transcribe',
+    final ready = ReceivePort();
+    final isolate = await Isolate.spawn(
+      _whisperWorkerMain,
+      {
+        'readyPort': ready.sendPort,
+        'encoderPath': p.join(directory.path, 'tiny-encoder.int8.onnx'),
+        'decoderPath': p.join(directory.path, 'tiny-decoder.int8.onnx'),
+        'tokensPath': p.join(directory.path, 'tiny-tokens.txt'),
+      },
     );
-    final model = OfflineModelConfig(
-      whisper: whisper,
-      tokens: p.join(directory.path, 'tiny-tokens.txt'),
-      modelType: 'whisper',
-      numThreads: 1,
-      debug: false,
-      provider: 'cpu',
-    );
-    // sherpa-onnx 2.x requires native FFI bindings before creating
-    // recognizers. Initialize once in this isolate before any runtime object.
-    if (!_bindingsInitialized) {
-      await initBindingsAsync();
-      _bindingsInitialized = true;
+    _recognizerIsolate = isolate;
+    try {
+      final result = await ready.first.timeout(const Duration(minutes: 2));
+      if (result is SendPort) {
+        _workerSendPort = result;
+        return;
+      }
+      isolate.kill(priority: Isolate.immediate);
+      _recognizerIsolate = null;
+      final detail = result is Map ? result['error'] : null;
+      throw StateError(
+        detail == null
+            ? 'Mesin pengenalan suara offline gagal disiapkan.'
+            : 'Mesin pengenalan suara offline gagal disiapkan: $detail',
+      );
+    } on TimeoutException {
+      isolate.kill(priority: Isolate.immediate);
+      _recognizerIsolate = null;
+      throw StateError('Persiapan model suara terlalu lama. Coba lagi.');
+    } finally {
+      ready.close();
     }
-    _recognizer = await OfflineRecognizer.createAsync(
-      OfflineRecognizerConfig(model: model),
+  }
+
+  Future<String> _decodeInWorker(Float32List samples) async {
+    final worker = _workerSendPort;
+    if (worker == null) {
+      throw StateError('Mesin pengenalan suara offline belum siap.');
+    }
+    final response = ReceivePort();
+    final audioBytes = samples.buffer.asUint8List(
+      samples.offsetInBytes,
+      samples.lengthInBytes,
     );
+    worker.send({
+      'type': 'decode',
+      'samples': TransferableTypedData.fromList([audioBytes]),
+      'replyTo': response.sendPort,
+    });
+    try {
+      final result = await response.first.timeout(const Duration(minutes: 2));
+      if (result is Map && result['ok'] == true) {
+        return (result['text'] ?? '').toString();
+      }
+      final detail = result is Map ? result['error'] : null;
+      throw StateError(
+        detail == null
+            ? 'Pengenalan suara offline gagal.'
+            : 'Pengenalan suara offline gagal: $detail',
+      );
+    } on TimeoutException {
+      throw StateError('Pengenalan suara terlalu lama. Coba rekam lebih singkat.');
+    } finally {
+      response.close();
+    }
   }
 
   Future<void> startRecording() async {
@@ -292,16 +414,8 @@ class OfflineAsrService {
       final bytes = await file.readAsBytes();
       final samples = pcm16leToFloat32(bytes);
 
-      final recognizer = _recognizer;
-      if (recognizer == null) return '';
-      final stream = recognizer.createStream();
-      try {
-        stream.acceptWaveform(samples: samples, sampleRate: sampleRate);
-        recognizer.decode(stream);
-        return recognizer.getResult(stream).text.trim();
-      } finally {
-        stream.free();
-      }
+      if (_workerSendPort == null) return '';
+      return await _decodeInWorker(samples);
     } finally {
       // Cleanup must never leave the service permanently busy if the OS
       // refuses to remove a temporary recording file.
@@ -335,8 +449,21 @@ class OfflineAsrService {
 
   Future<void> unloadModel() async {
     if (_recording) await cancelRecording();
-    _recognizer?.free();
-    _recognizer = null;
+    final worker = _workerSendPort;
+    if (worker != null) {
+      final response = ReceivePort();
+      worker.send({'type': 'dispose', 'replyTo': response.sendPort});
+      try {
+        await response.first.timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        // Kill the worker below if native cleanup does not respond.
+      } finally {
+        response.close();
+      }
+    }
+    _workerSendPort = null;
+    _recognizerIsolate?.kill(priority: Isolate.immediate);
+    _recognizerIsolate = null;
   }
 
   Future<void> dispose() async {
