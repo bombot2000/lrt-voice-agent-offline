@@ -40,7 +40,8 @@ class VoiceController extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
-    await initializeSpeech();
+    // TTS can be prepared without microphone access. Speech recognition and
+    // its permission prompt are initialized lazily on the first mic tap.
     await initializeTts();
   }
 
