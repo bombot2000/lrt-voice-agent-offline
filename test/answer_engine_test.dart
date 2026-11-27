@@ -432,10 +432,10 @@ void main() {
       final answer = await AnswerEngine(
         FakeLookup(rows: [row], total: 1),
       ).answer('tarif khusus Gadingkasri Klojen Malang 150 kg');
-      expect(answer, 'ESTIMASI TARIF PENGIRIMAN\\n'
-          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\\n\\n'
-          '- Tarif khusus: minimum Reguler 20 kg, berat tagihan 150 kg × Rp 1.250/kg = Rp 187.500.\\n\\n'
-          'Estimasi Pengiriman: 2 hari\\n'
+      expect(answer, 'ESTIMASI TARIF PENGIRIMAN\n'
+          'Tujuan: Gadingkasri, Klojen, Malang Kota, Jawa Timur\n\n'
+          '- Tarif khusus: minimum Reguler 20 kg, berat tagihan 150 kg × Rp 1.250/kg = Rp 187.500.\n\n'
+          'Estimasi Pengiriman: 2 hari\n'
           'Handler: MALANG AGEN');
       expect(answer, isNot(contains('📦')));
       expect(answer, isNot(contains('💰')));
