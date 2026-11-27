@@ -23,6 +23,9 @@ class _ModelFile {
 class OfflineAsrService {
   static const int sampleRate = 16000;
   static const int _totalBytes = 103609903;
+  static const String _verificationMarkerName = '.model-verified-v1';
+  static final String _verificationMarkerContent =
+      _modelFiles.map((model) => model.sha256).join('\n');
 
   static const List<_ModelFile> _modelFiles = [
     _ModelFile(
@@ -69,9 +72,21 @@ class OfflineAsrService {
       if (!await file.exists() || await file.length() != model.bytes) {
         return false;
       }
+    }
+
+    // A verified marker avoids hashing ~104 MB whenever settings opens or
+    // loadModel runs. If the marker is absent/outdated, verify every file once.
+    final marker = File(p.join(directory.path, _verificationMarkerName));
+    if (await marker.exists() &&
+        await marker.readAsString() == _verificationMarkerContent) {
+      return true;
+    }
+    for (final model in _modelFiles) {
+      final file = File(p.join(directory.path, model.name));
       final digest = await sha256.bind(file.openRead()).first;
       if (digest.toString() != model.sha256) return false;
     }
+    await marker.writeAsString(_verificationMarkerContent, flush: true);
     return true;
   }
 
@@ -88,6 +103,10 @@ class OfflineAsrService {
       // Keep setup inside the guarded block so filesystem failures cannot
       // leave the service permanently marked as busy.
       modelDirectory = await _modelDirectory();
+      final marker = File(
+        p.join(modelDirectory.path, _verificationMarkerName),
+      );
+      if (await marker.exists()) await marker.delete();
       client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 30)
         ..idleTimeout = const Duration(seconds: 45);
@@ -144,6 +163,9 @@ class OfflineAsrService {
         completedBytes += model.bytes;
         onProgress?.call(completedBytes, _totalBytes);
       }
+      // Write the marker only after all model files passed size and SHA-256 checks.
+      await File(p.join(modelDirectory.path, _verificationMarkerName))
+          .writeAsString(_verificationMarkerContent, flush: true);
     } catch (_) {
       // Directory creation itself can fail; clean partial downloads only
       // after the model directory has been resolved successfully.
