@@ -56,7 +56,7 @@ class CargoVoiceAgentPage extends StatefulWidget {
       _CargoVoiceAgentPageState();
 }
 
-class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
+class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> with WidgetsBindingObserver {
   final VoiceController _voice = VoiceController();
   final OfflineAsrService _offlineAsr = OfflineAsrService();
   Timer? _offlineRecordTimer;
@@ -86,8 +86,28 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _voice.addListener(_onVoiceChanged);
     _voice.initialize();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.paused) return;
+
+    _offlineRecordTimer?.cancel();
+    if (_localRecording) {
+      _localRecording = false;
+      unawaited(_offlineAsr.cancelRecording());
+      _voice.setExternalListening(
+        false,
+        status: VoiceController.defaultStatus,
+      );
+    } else if (_voice.isListening) {
+      unawaited(_voice.cancelListening());
+    }
+    if (_voice.isSpeaking) unawaited(_voice.stopSpeaking());
+    if (mounted) setState(() => _liveTranscript = '');
   }
 
   Future<void> _openFareManager() async {
@@ -314,6 +334,7 @@ class _CargoVoiceAgentPageState extends State<CargoVoiceAgentPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _offlineRecordTimer?.cancel();
     unawaited(_offlineAsr.dispose());
     _voice.removeListener(_onVoiceChanged);
