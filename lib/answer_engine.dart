@@ -292,17 +292,16 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
   if (wantsSpecial && specialRate != null && specialRate > 0 &&
       regularMinimum != null && regularMinimum > 0) {
     final billable = weight == null ? regularMinimum : billableWeight(weight, regularMinimum);
-    final line = 'Tarif khusus: minimum Reguler ${formatPlainNumber(regularMinimum)} kg, berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(specialRate)}/kg = ${formatRupiah(billable * specialRate)}.';
+    final line = '- Tarif khusus: minimum Reguler ${formatPlainNumber(regularMinimum)} kg, berat tagihan ${formatPlainNumber(billable)} kg × ${formatRupiah(specialRate)}/kg = ${formatRupiah(billable * specialRate)}.';
     return [
-      '📦 INFORMASI TARIF NEXT CARGO',
+      'ESTIMASI TARIF PENGIRIMAN',
       'Tujuan: $destination',
       '',
-      '💰 Tarif Pengiriman:',
-      '- $line',
+      line,
       '',
-      if (_leadTimeLabel(r).isNotEmpty) '⏱️ Estimasi Pengiriman: ${_leadTimeLabel(r)}',
-      if (_handlerLabel(r).isNotEmpty) '📍 Handler: ${_handlerLabel(r)}',
-    ].join('\n');
+      if (_leadTimeLabel(r).isNotEmpty) 'Estimasi Pengiriman: ${_leadTimeLabel(r)}',
+      if (_handlerLabel(r).isNotEmpty) 'Handler: ${_handlerLabel(r)}',
+    ].join('\\n');
   }
   if (wantsSpecial && (specialRate == null || specialRate <= 0)) {
     return 'Tarif khusus tidak tersedia untuk tujuan $destination.';
