@@ -1,0 +1,182 @@
+[
+  {
+    "id": "cargo_001",
+    "category": "tarif_reguler",
+    "reference_text": "ongkir ke Gadingkasri Klojen Malang Kota 20 kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_002",
+    "category": "tarif_reguler",
+    "reference_text": "berapa ongkos kirim ke Pakisaji Kabupaten Malang berat tiga puluh kilo",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_003",
+    "category": "tarif_reguler",
+    "reference_text": "cek tarif pengiriman ke Lowokwaru Malang 46 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_004",
+    "category": "tarif_reguler",
+    "reference_text": "tarif reguler ke Kasin Klojen Malang lima puluh enam kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_005",
+    "category": "tarif_reguler",
+    "reference_text": "hitung ongkir ke Abiansemal Badung dua puluh kilo",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_006",
+    "category": "tarif_reguler",
+    "reference_text": "ongkir tujuan Sukun Malang berat sepuluh kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_007",
+    "category": "tarif_reguler",
+    "reference_text": "berapa biaya kirim ke Blimbing Malang 25 kilo",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_008",
+    "category": "tarif_reguler",
+    "reference_text": "tolong cek ongkir ke Jatiasih Bekasi 30 kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_009",
+    "category": "tarif_khusus",
+    "reference_text": "tarif khusus Gadingkasri Klojen Malang 150 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_010",
+    "category": "tarif_khusus",
+    "reference_text": "ongkir khusus ke Kasin Klojen berat seratus lima puluh kilo",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_011",
+    "category": "tarif_khusus",
+    "reference_text": "hitung tarif khusus Pakisaji 75 kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_012",
+    "category": "tarif_khusus",
+    "reference_text": "berapa ongkos khusus ke Lowokwaru 200 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_013",
+    "category": "layanan_sp",
+    "reference_text": "ongkir SP1 ke Bekasi Jatiasih 200 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_014",
+    "category": "layanan_sp",
+    "reference_text": "cek tarif SP dua ke Badung Abiansemal 500 kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_015",
+    "category": "layanan_sp",
+    "reference_text": "tarif SP3 tujuan Bekasi 1000 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_016",
+    "category": "layanan_sp",
+    "reference_text": "berapa ongkir reguler tujuan Malang 40 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_017",
+    "category": "kendaraan",
+    "reference_text": "tarif motor 100 cc ke Malang Kota",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_018",
+    "category": "kendaraan",
+    "reference_text": "ongkir motor 150cc tujuan Badung",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_019",
+    "category": "kendaraan",
+    "reference_text": "berapa biaya kirim sepeda ke Klojen",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_020",
+    "category": "kendaraan",
+    "reference_text": "tarif motor 750 cc ke Bekasi",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_021",
+    "category": "angka",
+    "reference_text": "ongkir tujuan Malang berat dua puluh lima koma lima kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_022",
+    "category": "angka",
+    "reference_text": "tarif ke Pakisaji berat 1,5 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_023",
+    "category": "angka",
+    "reference_text": "cek ongkir 100 kilogram ke Klojen Malang",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_024",
+    "category": "angka",
+    "reference_text": "hitung pengiriman barang berat 0,5 kilo ke Malang",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_025",
+    "category": "variasi_ucapan",
+    "reference_text": "saya mau kirim barang ke Gadingkasri Malang beratnya 20 kilo berapa ongkirnya",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_026",
+    "category": "variasi_ucapan",
+    "reference_text": "kalau kirim paket ke Kasin Klojen lima puluh kilo berapa biayanya",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_027",
+    "category": "variasi_ucapan",
+    "reference_text": "tolong carikan harga pengiriman ke Pakisaji Kabupaten Malang 35 kilogram",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_028",
+    "category": "variasi_ucapan",
+    "reference_text": "minta estimasi ongkos kirim tujuan Lowokwaru berat 12 kilo",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_029",
+    "category": "tujuan",
+    "reference_text": "ongkir ke Gadingkasri Klojen Malang Jawa Timur 20 kg",
+    "expected_intent": "cargoTariff"
+  },
+  {
+    "id": "cargo_030",
+    "category": "tujuan",
+    "reference_text": "tarif pengiriman ke Pakisaji Kabupaten Malang Jawa Timur 30 kg",
+    "expected_intent": "cargoTariff"
+  }
+]
