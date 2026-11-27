@@ -466,6 +466,14 @@ class OfflineAsrService {
 
   Future<void> unloadModel() async {
     if (_recording) await cancelRecording();
+    final loading = _loadingModel;
+    if (loading != null) {
+      try {
+        await loading;
+      } catch (_) {
+        // Continue cleanup if worker initialization failed.
+      }
+    }
     final worker = _workerSendPort;
     if (worker != null) {
       final response = ReceivePort();
