@@ -16,30 +16,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Extract uploaded source archive when present
-        run: |
-          set -euo pipefail
-          ARCHIVE="lrt-voice-agent-offline-cargo-build-115-patched.zip"
-          if [ -f "$ARCHIVE" ]; then
-            unzip -q "$ARCHIVE" -d /tmp/cargo-build115
-            PROJECT_DIR="$(find /tmp/cargo-build115 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-            test -n "$PROJECT_DIR"
-            test -f "$PROJECT_DIR/pubspec.yaml"
-            test -f "$PROJECT_DIR/android/app/build.gradle"
-            test -f "$PROJECT_DIR/lib/main.dart"
-            rsync -a --delete \
-              --exclude='.git/' \
-              --exclude='.github/workflows/build-apk.yml' \
-              --exclude='android/app/build.gradle' \
-              --exclude='android/key.properties' \
-              --exclude='android/app/*.jks' \
-              --exclude='android/app/*.keystore' \
-              --exclude='android/*.jks' \
-              --exclude='android/*.keystore' \
-              "$PROJECT_DIR/" ./
-            rm -f "$ARCHIVE"
-          fi
-
       - name: Verify application identity
         run: |
           set -euo pipefail
