@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -11,6 +13,9 @@ class FareManagerPage extends StatefulWidget {
 }
 
 class _FareManagerPageState extends State<FareManagerPage> {
+  // XLSX dapat membesar jauh setelah didekompresi. Batasi ukuran sumber agar
+  // perangkat Android dengan RAM kecil tidak kehabisan memori.
+  static const int _maxImportBytes = 40 * 1024 * 1024;
   int count = 0;
   bool _hasBackup = false;
   String? filename;
@@ -57,7 +62,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       final f = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'json', 'xlsx'],
-        withData: true,
+        withData: false,
       );
       if (f == null) return;
       final file = f.files.single;
@@ -69,9 +74,21 @@ class _FareManagerPageState extends State<FareManagerPage> {
           clearSelection();
         });
       }
-      final data = file.bytes;
-      if (data == null) throw Exception('File tidak dapat dibaca.');
-      // Parsing berjalan di isolate terpisah, jadi spinner tetap berputar.
+      final path = file.path;
+      if (path == null || path.isEmpty) {
+        throw const FormatException('Lokasi file sementara tidak tersedia.');
+      }
+      final source = File(path);
+      final length = await source.length();
+      if (length <= 0) throw const FormatException('File kosong.');
+      if (length > _maxImportBytes) {
+        throw const FormatException(
+          'Ukuran file melebihi 40 MB. Pecah data menjadi beberapa file CSV agar aman diproses di HP.',
+        );
+      }
+      // Baca dari path agar plugin tidak sekaligus menyimpan salinan bytes
+      // di PlatformFile. Parsing tetap dilakukan pada isolate terpisah.
+      final data = await source.readAsBytes();
       final result = await NextCargoTariffService.parse(file.name, data);
       if (mounted) {
         setState(() {
@@ -81,7 +98,7 @@ class _FareManagerPageState extends State<FareManagerPage> {
       }
     } catch (e) {
       if (mounted) setState(clearSelection);
-      msg('File tarif tidak dapat dibaca. Pastikan format dan kolomnya sesuai.', true);
+      msg('File tarif tidak dapat dibaca. Gunakan CSV UTF-8/JSON/XLSX hingga 40 MB dan periksa kolomnya.', true);
     } finally {
       if (mounted) setState(() => busy = false);
     }
