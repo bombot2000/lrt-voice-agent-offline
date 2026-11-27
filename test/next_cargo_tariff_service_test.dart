@@ -174,7 +174,7 @@ void main() {
 
     final parsed = await NextCargoTariffService.parse(
       'source.csv',
-      bytes('$header\\n$row'),
+      bytes('$header\n$row'),
     );
     await NextCargoTariffService.importParsed(parsed, replace: true);
 
