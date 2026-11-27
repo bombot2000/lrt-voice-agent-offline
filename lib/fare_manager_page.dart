@@ -124,6 +124,30 @@ class _FareManagerPageState extends State<FareManagerPage> {
     }
   }
 
+  Future<void> exportBackup() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final data = await NextCargoTariffService.exportJson();
+      final saved = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan backup data tarif',
+        fileName: 'next-cargo-tariff-backup.json',
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: data,
+      );
+      if (saved == null) {
+        msg('Ekspor backup dibatalkan.');
+      } else {
+        msg('Backup tarif berhasil disimpan. Simpan file ini di luar aplikasi.');
+      }
+    } catch (_) {
+      msg('Backup tarif gagal dibuat atau disimpan. Data aktif tidak berubah.', true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> restore() async {
     final yes = await showDialog<bool>(
       context: context,
@@ -248,6 +272,18 @@ class _FareManagerPageState extends State<FareManagerPage> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: busy ? null : exportBackup,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('Ekspor backup tarif (JSON)'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           Container(
