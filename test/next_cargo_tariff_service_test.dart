@@ -29,6 +29,39 @@ void main() {
     );
   });
 
+  test('rejects invalid UTF-8 JSON instead of silently replacing characters', () async {
+    await expectLater(
+      NextCargoTariffService.preview(
+        'broken.json',
+        Uint8List.fromList([0xC3, 0x28]),
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('JSON UTF-8'),
+        ),
+      ),
+    );
+  });
+
+  test('rejects non-object rows in JSON with a format error', () async {
+    final record = <String, String>{
+      for (final name in header.split(',')) name: '',
+    }..['Asal Kota'] = 'MALANG KOTA';
+    final payload = bytes(jsonEncode({'data': [record, 42]}));
+    await expectLater(
+      NextCargoTariffService.preview('mixed.json', payload),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('daftar objek tarif'),
+        ),
+      ),
+    );
+  });
+
   test('rejects decoded replacement character U+FFFD in CSV', () async {
     final replacement = utf8.encode('$header\n$row\n');
     final bytesWithReplacement = Uint8List.fromList([
