@@ -161,12 +161,12 @@ void main() {
       final engine = AnswerEngine(FakeLookup(rows: [vehicleRow], total: 1));
       final result = await engine.answer('ongkir sepeda ke Badung 20 kg');
       expect(result, equals(
-        'ESTIMASI TARIF PENGIRIMAN SEPEDA\\n'
-        'Tujuan: Abiansemal, Abiansemal, Badung, Bali\\n'
-        'Jenis kendaraan: Sepeda\\n'
-        '\\n'
-        'Tarif: Rp 85.000 per unit\\n'
-        '\\n'
+        'ESTIMASI TARIF PENGIRIMAN SEPEDA\n'
+        'Tujuan: Abiansemal, Abiansemal, Badung, Bali\n'
+        'Jenis kendaraan: Sepeda\n'
+        '\n'
+        'Tarif: Rp 85.000 per unit\n'
+        '\n'
         'Tarif tetap per unit, tidak dihitung berdasarkan berat barang.',
       ));
       expect(result, isNot(contains('Berat aktual')));
