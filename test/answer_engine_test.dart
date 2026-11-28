@@ -136,7 +136,7 @@ void main() {
       final result = await engine.answer('tarif motor 100cc ke Badung 20 kg');
       expect(result, equals(
         'ESTIMASI TARIF PENGIRIMAN MOTOR\\n'
-        'Tujuan: Abiansemal, Badung, Bali\\n'
+        'Tujuan: Abiansemal, Abiansemal, Badung, Bali\\n'
         'Jenis kendaraan: Motor 100cc\\n'
         '\\n'
         'Tarif: Rp 125.000 per unit\\n'
@@ -160,7 +160,8 @@ void main() {
     test('sepeda memakai tarif tetap per unit', () async {
       final engine = AnswerEngine(FakeLookup(rows: [vehicleRow], total: 1));
       final result = await engine.answer('ongkir sepeda ke Badung');
-      expect(result, contains('sepeda: Rp 85.000 per unit'));
+      expect(result, contains('Jenis kendaraan: Sepeda'));
+      expect(result, contains('Tarif: Rp 85.000 per unit'));
       expect(result, isNot(contains('/kg')));
     });
 
@@ -697,7 +698,7 @@ void main() {
       final afterCapacity = await engine.ask('125cc');
       expect(afterCapacity.text, contains('2 tujuan yang cocok'));
       final selected = engine.select(afterCapacity.choices.last);
-      expect(selected.text, contains('motor 125cc'));
+      expect(selected.text, contains('Jenis kendaraan: Motor 125cc'));
       expect(selected.text, contains('Rp 145.000 per unit'));
     });
 
@@ -742,7 +743,8 @@ void main() {
       final refined = await engine.ask('sepeda');
       expect(refined.choices.length, 2);
       final selected = engine.select(refined.choices.last);
-      expect(selected.text, contains('sepeda: Rp 90.000 per unit'));
+      expect(selected.text, contains('ESTIMASI TARIF PENGIRIMAN SEPEDA'));
+      expect(selected.text, contains('Tarif: Rp 90.000 per unit'));
       expect(selected.text, isNot(contains('/kg')));
     });
 
