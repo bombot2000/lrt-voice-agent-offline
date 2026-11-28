@@ -246,7 +246,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
       'Tarif: ${formatRupiah(rate)} per unit',
       '',
       'Tarif tetap per unit, tidak dihitung berdasarkan berat barang.',
-    ].join('\\n');
+    ].join('\n');
   }
 
   final weight = parseWeight(query);
