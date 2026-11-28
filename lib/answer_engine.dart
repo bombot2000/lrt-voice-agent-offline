@@ -237,7 +237,16 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     if (rate == null || rate <= 0) {
       return 'Tarif $item tidak tersedia untuk tujuan $destination.';
     }
-    return 'Tarif NEXT Cargo ke $destination untuk $item: ${formatRupiah(rate)} per unit (tarif tetap, tidak dihitung berdasarkan berat barang).';
+    final vehicleLabel = wantsBicycle ? 'Sepeda' : 'Motor ${motorMatch!.group(1)}cc';
+    return [
+      'ESTIMASI TARIF PENGIRIMAN MOTOR',
+      'Tujuan: $destination',
+      'Jenis kendaraan: $vehicleLabel',
+      '',
+      'Tarif: ${formatRupiah(rate)} per unit',
+      '',
+      'Tarif tetap per unit, tidak dihitung berdasarkan berat barang.',
+    ].join('\\n');
   }
 
   final weight = parseWeight(query);
