@@ -239,7 +239,7 @@ String buildFareAnswer(String query, Map<String, Object?> r) {
     }
     final vehicleLabel = wantsBicycle ? 'Sepeda' : 'Motor ${motorMatch!.group(1)}cc';
     return [
-      'ESTIMASI TARIF PENGIRIMAN MOTOR',
+      wantsBicycle ? 'ESTIMASI TARIF PENGIRIMAN SEPEDA' : 'ESTIMASI TARIF PENGIRIMAN MOTOR',
       'Tujuan: $destination',
       'Jenis kendaraan: $vehicleLabel',
       '',
