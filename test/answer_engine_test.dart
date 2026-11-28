@@ -157,12 +157,32 @@ void main() {
       }
     });
 
-    test('sepeda memakai tarif tetap per unit', () async {
+    test('sepeda memakai format lengkap dan tarif tetap meski query menyebut berat', () async {
       final engine = AnswerEngine(FakeLookup(rows: [vehicleRow], total: 1));
-      final result = await engine.answer('ongkir sepeda ke Badung');
-      expect(result, contains('Jenis kendaraan: Sepeda'));
-      expect(result, contains('Tarif: Rp 85.000 per unit'));
+      final result = await engine.answer('ongkir sepeda ke Badung 20 kg');
+      expect(result, equals(
+        'ESTIMASI TARIF PENGIRIMAN SEPEDA\\n'
+        'Tujuan: Abiansemal, Abiansemal, Badung, Bali\\n'
+        'Jenis kendaraan: Sepeda\\n'
+        '\\n'
+        'Tarif: Rp 85.000 per unit\\n'
+        '\\n'
+        'Tarif tetap per unit, tidak dihitung berdasarkan berat barang.',
+      ));
+      expect(result, isNot(contains('Berat aktual')));
+      expect(result, isNot(contains('Berat tagihan')));
       expect(result, isNot(contains('/kg')));
+      expect(result, isNot(contains('Rp 117.500')));
+    });
+
+    test('tarif sepeda kosong atau nol tidak jatuh ke tarif Reguler', () {
+      for (final emptyRate in ['', '0']) {
+        final row = <String, Object?>{...vehicleRow, 'sepeda': emptyRate};
+        final result = buildFareAnswer('ongkir sepeda ke Badung 20 kg', row);
+        expect(result, contains('Tarif sepeda tidak tersedia'));
+        expect(result, isNot(contains('Rp 117.500')));
+        expect(result, isNot(contains('/kg')));
+      }
     });
 
     test('kapasitas motor yang tidak disebut meminta klarifikasi', () {
